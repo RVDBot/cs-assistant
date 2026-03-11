@@ -199,7 +199,7 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
                     {!isInbound && (
                       msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-400" /> :
                       msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-whatsapp-muted" /> :
-                      msg.status === 'demo' ? <Check className="w-3 h-3 text-yellow-400" title="Demo mode" /> :
+                      msg.status === 'demo' ? <Check className="w-3 h-3 text-yellow-400" /> :
                       <Check className="w-3 h-3 text-whatsapp-muted" />
                     )}
                   </div>

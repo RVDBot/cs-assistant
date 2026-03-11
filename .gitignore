@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+
+# Data & secrets
+data/
+.env
+.env.local
+.env.production
+
+# Knowledge files (populated at runtime)
+# Remove this line if you want to commit your knowledge base
+# knowledge/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

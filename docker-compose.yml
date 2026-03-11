@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  cs-assistant:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data          # SQLite database
+      - ./knowledge:/app/knowledge # Knowledge .md files
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/cs-assistant.db
+      # You can also set these here instead of in the app's settings UI:
+      # - TWILIO_ACCOUNT_SID=ACxxx
+      # - TWILIO_AUTH_TOKEN=xxx
+      # - TWILIO_PHONE_NUMBER=whatsapp:+14155238886
+      # - ANTHROPIC_API_KEY=sk-ant-xxx
+      # - CLAUDE_MODEL=claude-opus-4-6
+    restart: unless-stopped

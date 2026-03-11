@@ -28,3 +28,5 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/rvdbot/cs-assistant:latest
+          build-args: |
+            BUILDKIT_PROGRESS=plain

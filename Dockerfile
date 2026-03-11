@@ -1,6 +1,6 @@
 FROM node:22-alpine AS base
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++
 
 WORKDIR /app
 
@@ -14,7 +14,6 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NODE_OPTIONS=--experimental-sqlite
 RUN npm run build
 
 # Production runner
@@ -22,7 +21,6 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NODE_OPTIONS=--experimental-sqlite
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -1,5 +1,4 @@
-// Uses Node.js built-in SQLite (available since Node 22.5) — no native compilation needed.
-import { DatabaseSync } from 'node:sqlite'
+import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 
@@ -7,26 +6,24 @@ const DB_PATH = process.env.DATABASE_PATH
   ? path.resolve(process.env.DATABASE_PATH)
   : path.join(process.cwd(), 'data', 'cs-assistant.db')
 
-// Ensure the data directory exists
 const dir = path.dirname(DB_PATH)
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
-let _db: DatabaseSync | null = null
+let _db: Database.Database | null = null
 
-export function getDb(): DatabaseSync {
+export function getDb(): Database.Database {
   if (_db) return _db
-  _db = new DatabaseSync(DB_PATH)
+  _db = new Database(DB_PATH)
+  _db.pragma('journal_mode = WAL')
+  _db.pragma('foreign_keys = ON')
   initSchema(_db)
   return _db
 }
 
-function initSchema(db: DatabaseSync) {
+function initSchema(db: Database.Database) {
   db.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
-
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL DEFAULT ''
@@ -82,8 +79,6 @@ function initSchema(db: DatabaseSync) {
     INSERT OR IGNORE INTO tone_of_voice (id, prompt) VALUES (1, '');
   `)
 }
-
-// ─── Typed row interfaces ────────────────────────────────────────────────────
 
 export interface Conversation {
   id: number

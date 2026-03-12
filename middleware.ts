@@ -1,45 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 
-function getSecret() {
-  return process.env.NEXTAUTH_SECRET || 'change-me-in-production'
-}
+const SECRET = process.env.NEXTAUTH_SECRET || 'change-me-in-production'
 
-function verifyToken(token: string): boolean {
+async function verifyToken(token: string): Promise<boolean> {
   try {
-    const lastDot = token.lastIndexOf('.')
-    if (lastDot === -1) return false
-    const value = token.slice(0, lastDot)
-    const sig = token.slice(lastDot + 1)
-    const expected = crypto.createHmac('sha256', getSecret()).update(value).digest('hex')
-    return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+    const dot = token.lastIndexOf('.')
+    if (dot === -1) return false
+    const payload = token.slice(0, dot)
+    const b64sig = token.slice(dot + 1)
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    )
+    const signature = Uint8Array.from(atob(b64sig), c => c.charCodeAt(0))
+    return await crypto.subtle.verify('HMAC', key, signature, new TextEncoder().encode(payload))
   } catch {
     return false
   }
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Always allow login page and auth API
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
-    return NextResponse.next()
-  }
-
-  // Allow Twilio webhook without auth (called by Twilio's servers)
-  if (pathname === '/api/twilio/webhook') {
+  // Always allow login page, auth API and Twilio webhook
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/api/auth') ||
+    pathname === '/api/twilio/webhook'
+  ) {
     return NextResponse.next()
   }
 
   const token = req.cookies.get('cs_auth')?.value
-  if (token && verifyToken(token)) {
+  if (token && await verifyToken(token)) {
     return NextResponse.next()
   }
 
-  // Redirect to login
-  const loginUrl = req.nextUrl.clone()
-  loginUrl.pathname = '/login'
-  return NextResponse.redirect(loginUrl)
+  const url = req.nextUrl.clone()
+  url.pathname = '/login'
+  return NextResponse.redirect(url)
 }
 
 export const config = {

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { getDb } from '@/lib/db'
 
-function getSecret() {
-  return process.env.NEXTAUTH_SECRET || 'change-me-in-production'
-}
+const SECRET = process.env.NEXTAUTH_SECRET || 'change-me-in-production'
 
 function getPassword(): string {
   const db = getDb()
@@ -12,18 +9,17 @@ function getPassword(): string {
   return row?.value || process.env.APP_PASSWORD || ''
 }
 
-function signToken(value: string): string {
-  const hmac = crypto.createHmac('sha256', getSecret())
-  hmac.update(value)
-  return value + '.' + hmac.digest('hex')
-}
-
-export function verifyToken(token: string): boolean {
-  const lastDot = token.lastIndexOf('.')
-  if (lastDot === -1) return false
-  const value = token.slice(0, lastDot)
-  const expected = signToken(value)
-  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+async function signToken(value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value))
+  const b64sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
+  return `${value}.${b64sig}`
 }
 
 // POST /api/auth — login
@@ -31,21 +27,18 @@ export async function POST(req: NextRequest) {
   const { password } = await req.json()
   const correct = getPassword()
 
-  if (!correct) {
-    // No password set — allow access
-    const token = signToken('authenticated')
-    const res = NextResponse.json({ ok: true })
-    res.cookies.set('cs_auth', token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7 })
-    return res
-  }
-
-  if (password !== correct) {
+  if (correct && password !== correct) {
     return NextResponse.json({ error: 'Ongeldig wachtwoord' }, { status: 401 })
   }
 
-  const token = signToken('authenticated')
+  const token = await signToken('authenticated')
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('cs_auth', token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7 })
+  res.cookies.set('cs_auth', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7,
+  })
   return res
 }
 

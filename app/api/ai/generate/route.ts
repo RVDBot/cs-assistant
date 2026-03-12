@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
       customerMessage: lastInbound.content,
       customerMessageDutch: lastInbound.content_dutch || lastInbound.content,
       customerLanguage: conv.detected_language,
-      conversationHistory: history.slice(0, -1), // exclude the last message, we pass it separately
+      conversationHistory: history.slice(0, -1),
+      conversationId: conv.id,
     })
     return NextResponse.json(result)
   } catch (e) {

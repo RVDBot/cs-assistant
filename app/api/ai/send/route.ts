@@ -51,13 +51,13 @@ export async function POST(req: NextRequest) {
 
   if (lastInbound && answer_dutch) {
     const customerMessageDutch = lastInbound.content_dutch || lastInbound.content
-    updateKnowledgeInBackground(customerMessageDutch, answer_dutch).catch(console.error)
+    updateKnowledgeInBackground(customerMessageDutch, answer_dutch, conversation_id).catch(console.error)
   }
 
   return NextResponse.json({ ok: true, twilio_sid: twilioSid })
 }
 
-async function updateKnowledgeInBackground(customerMessage: string, agentAnswer: string) {
+async function updateKnowledgeInBackground(customerMessage: string, agentAnswer: string, conversationId: number) {
   // Pick the most likely topic using Claude (simple heuristic here)
   const lowerMsg = customerMessage.toLowerCase()
   const topicSlug = KNOWLEDGE_TOPICS.find(t => {
@@ -74,6 +74,7 @@ async function updateKnowledgeInBackground(customerMessage: string, agentAnswer:
     agentAnswer,
     topic: topic.title,
     currentContent: current.content,
+    conversationId,
   })
 
   saveKnowledgeFile(topicSlug, updated)

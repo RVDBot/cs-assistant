@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
   let dutchContent = messageBody
 
   try {
-    language = await detectLanguage(messageBody)
-    dutchContent = await translateToDutch(messageBody, language)
+    language = await detectLanguage(messageBody, conv.id)
+    dutchContent = await translateToDutch(messageBody, language, conv.id)
     if (language !== conv.detected_language) {
       db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
     }

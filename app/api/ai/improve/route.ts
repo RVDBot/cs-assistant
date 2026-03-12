@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       instruction,
       customerMessage: lastInbound?.content || '',
       customerLanguage: conv.detected_language,
+      conversationId: Number(conversation_id),
     })
     return NextResponse.json(result)
   } catch (e) {

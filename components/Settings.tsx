@@ -66,14 +66,24 @@ export default function Settings({ onClose }: Props) {
   const [showKey, setShowKey] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [tokenStats, setTokenStats] = useState<{
+    total_input: number
+    total_output: number
+    total_calls: number
+    by_type: { call_type: string; label: string; input_tokens: number; output_tokens: number; calls: number }[]
+  } | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setWebhookUrl(`${window.location.origin}/api/twilio/webhook`)
     }
-    fetch('/api/settings').then(r => r.json()).then(data => {
-      setSettings(prev => ({ ...prev, ...data }))
+    Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch('/api/token-usage').then(r => r.json()),
+    ]).then(([settingsData, tokenData]) => {
+      setSettings(prev => ({ ...prev, ...settingsData }))
+      setTokenStats(tokenData)
       setLoading(false)
     })
   }, [])
@@ -222,6 +232,44 @@ export default function Settings({ onClose }: Props) {
                   ))}
                 </select>
               </div>
+            </section>
+
+            <hr className="border-whatsapp-border" />
+
+            {/* Token Usage */}
+            <section className="space-y-3">
+              <h3 className="text-whatsapp-text font-medium text-sm">AI Tokengebruik</h3>
+              {tokenStats && (tokenStats.total_input > 0 || tokenStats.total_output > 0) ? (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
+                      <p className="text-whatsapp-teal text-sm font-mono font-semibold">{tokenStats.total_input.toLocaleString('nl-NL')}</p>
+                      <p className="text-whatsapp-muted text-[11px] mt-0.5">Invoer tokens</p>
+                    </div>
+                    <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
+                      <p className="text-whatsapp-teal text-sm font-mono font-semibold">{tokenStats.total_output.toLocaleString('nl-NL')}</p>
+                      <p className="text-whatsapp-muted text-[11px] mt-0.5">Uitvoer tokens</p>
+                    </div>
+                    <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
+                      <p className="text-whatsapp-teal text-sm font-mono font-semibold">{(tokenStats.total_input + tokenStats.total_output).toLocaleString('nl-NL')}</p>
+                      <p className="text-whatsapp-muted text-[11px] mt-0.5">Totaal</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {tokenStats.by_type.map(row => (
+                      <div key={row.call_type} className="flex items-center justify-between text-xs px-1">
+                        <span className="text-whatsapp-muted">{row.label}</span>
+                        <span className="text-whatsapp-text font-mono">
+                          {(row.input_tokens + row.output_tokens).toLocaleString('nl-NL')}
+                          <span className="text-whatsapp-muted ml-1">({row.calls}×)</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-whatsapp-muted text-xs">Nog geen tokengebruik geregistreerd.</p>
+              )}
             </section>
 
             <hr className="border-whatsapp-border" />

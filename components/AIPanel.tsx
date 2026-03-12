@@ -24,6 +24,7 @@ interface ConvState {
   showImprove: boolean
   showDutch: boolean
   error: string | null
+  tokens: { input: number; output: number } | null
 }
 
 function emptyState(): ConvState {
@@ -35,6 +36,7 @@ function emptyState(): ConvState {
     showImprove: false,
     showDutch: true,
     error: null,
+    tokens: null,
   }
 }
 
@@ -55,6 +57,19 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
   // Snapshot latest convId so async callbacks can check if still relevant
   const activeConvId = useRef<number | null>(convId)
 
+  async function fetchTokens(id: number) {
+    try {
+      const res = await fetch(`/api/token-usage?conversation_id=${id}`)
+      const data = await res.json()
+      const t = { input: data.total_input || 0, output: data.total_output || 0 }
+      if (activeConvId.current === id) {
+        patch({ tokens: t })
+      } else if (cache.current[id]) {
+        cache.current[id] = { ...cache.current[id], tokens: t }
+      }
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     // Save current state for the conversation we're leaving
     if (activeConvId.current !== null) {
@@ -65,6 +80,7 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
     // Restore state for the conversation we're entering
     if (convId !== null) {
       setState(cache.current[convId] ?? emptyState())
+      fetchTokens(convId)
     } else {
       setState(emptyState())
     }
@@ -110,6 +126,7 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
       }
       if (data.error) throw new Error(data.error)
       patch({ answer: { dutch: data.dutch, customerLang: data.customerLang } })
+      fetchTokens(forConvId)
     } catch (e) {
       if (activeConvId.current !== forConvId) return
       patch({ error: e instanceof Error ? e.message : 'Fout bij genereren' })
@@ -153,6 +170,7 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
       }
       if (data.error) throw new Error(data.error)
       patch({ answer: { dutch: data.dutch, customerLang: data.customerLang }, improveInput: '' })
+      fetchTokens(forConvId)
     } catch (e) {
       if (activeConvId.current !== forConvId) return
       patch({ error: e instanceof Error ? e.message : 'Fout bij verbeteren' })
@@ -213,7 +231,7 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
   }
 
   const langName = getLanguageName(conversation.detected_language)
-  const { answer, generating, improving, improveInput, showImprove, showDutch, error } = state
+  const { answer, generating, improving, improveInput, showImprove, showDutch, error, tokens } = state
 
   return (
     <div className="w-[380px] min-w-[320px] flex flex-col bg-whatsapp-panel border-l border-whatsapp-border">
@@ -249,6 +267,16 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
             </>
           )}
         </button>
+
+        {/* Token usage for this conversation */}
+        {tokens && (tokens.input > 0 || tokens.output > 0) && (
+          <div className="flex items-center justify-between text-[11px] text-whatsapp-muted bg-whatsapp-input rounded-lg px-3 py-1.5">
+            <span>Tokens dit gesprek</span>
+            <span className="font-mono">
+              {tokens.input.toLocaleString('nl-NL')} in · {tokens.output.toLocaleString('nl-NL')} uit
+            </span>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

@@ -79,6 +79,16 @@ function initSchema(db: Database.Database) {
     );
 
     INSERT OR IGNORE INTO tone_of_voice (id, prompt) VALUES (1, '');
+
+    CREATE TABLE IF NOT EXISTS token_usage (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER,
+      call_type       TEXT NOT NULL,
+      input_tokens    INTEGER NOT NULL DEFAULT 0,
+      output_tokens   INTEGER NOT NULL DEFAULT 0,
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+    );
   `)
 
   // Safe migrations for existing databases

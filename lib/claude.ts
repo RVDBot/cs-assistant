@@ -21,6 +21,18 @@ function getModel() {
   )
 }
 
+function logTokens(conversationId: number | null | undefined, callType: string, usage: { input_tokens: number; output_tokens: number }) {
+  try {
+    const db = getDb()
+    db.prepare(`
+      INSERT INTO token_usage (conversation_id, call_type, input_tokens, output_tokens)
+      VALUES (?, ?, ?, ?)
+    `).run(conversationId ?? null, callType, usage.input_tokens, usage.output_tokens)
+  } catch (e) {
+    console.error('Failed to log token usage:', e)
+  }
+}
+
 function getToneOfVoice(): string {
   const db = getDb()
   const row = db.prepare('SELECT prompt FROM tone_of_voice WHERE id = 1').get() as { prompt: string } | undefined
@@ -43,7 +55,7 @@ function getContextLinks(): string {
   return links.map(l => `### Link: ${l.title || l.url}\n${l.content}`).join('\n\n')
 }
 
-export async function detectLanguage(text: string): Promise<string> {
+export async function detectLanguage(text: string, conversationId?: number): Promise<string> {
   const client = getClient()
   const response = await client.messages.create({
     model: getModel(),
@@ -55,11 +67,12 @@ export async function detectLanguage(text: string): Promise<string> {
       },
     ],
   })
+  logTokens(conversationId, 'detect_language', response.usage)
   const code = (response.content[0] as { text: string }).text.trim().toLowerCase().slice(0, 2)
   return code || 'en'
 }
 
-export async function translateToDutch(text: string, fromLang: string): Promise<string> {
+export async function translateToDutch(text: string, fromLang: string, conversationId?: number): Promise<string> {
   if (fromLang === 'nl') return text
   const client = getClient()
   const response = await client.messages.create({
@@ -72,10 +85,11 @@ export async function translateToDutch(text: string, fromLang: string): Promise<
       },
     ],
   })
+  logTokens(conversationId, 'translate_inbound', response.usage)
   return (response.content[0] as { text: string }).text.trim()
 }
 
-export async function translateToLanguage(text: string, targetLang: string): Promise<string> {
+export async function translateToLanguage(text: string, targetLang: string, conversationId?: number): Promise<string> {
   if (targetLang === 'nl') return text
   const client = getClient()
   const langNames: Record<string, string> = {
@@ -94,6 +108,7 @@ export async function translateToLanguage(text: string, targetLang: string): Pro
       },
     ],
   })
+  logTokens(conversationId, 'translate_outbound', response.usage)
   return (response.content[0] as { text: string }).text.trim()
 }
 
@@ -112,6 +127,7 @@ export async function generateAnswer(params: {
   customerLanguage: string
   conversationHistory: ConversationHistory[]
   previousConversations?: string
+  conversationId?: number
 }): Promise<{ dutch: string; customerLang: string }> {
   const client = getClient()
   const tone = getToneOfVoice()
@@ -158,6 +174,7 @@ Important: Only return the JSON object, nothing else.`
     messages,
   })
 
+  logTokens(params.conversationId, 'generate', response.usage)
   const raw = (response.content[0] as { text: string }).text.trim()
   try {
     const parsed = JSON.parse(stripCodeFences(raw))
@@ -176,6 +193,7 @@ export async function improveAnswer(params: {
   instruction: string
   customerMessage: string
   customerLanguage: string
+  conversationId?: number
 }): Promise<{ dutch: string; customerLang: string }> {
   const client = getClient()
   const tone = getToneOfVoice()
@@ -209,6 +227,7 @@ Only return the JSON object, nothing else.`
     ],
   })
 
+  logTokens(params.conversationId, 'improve', response.usage)
   const raw = (response.content[0] as { text: string }).text.trim()
   try {
     const parsed = JSON.parse(stripCodeFences(raw))
@@ -226,6 +245,7 @@ export async function updateKnowledgeFromAnswer(params: {
   agentAnswer: string
   topic: string
   currentContent: string
+  conversationId?: number
 }): Promise<string> {
   const client = getClient()
 
@@ -250,5 +270,6 @@ Return the updated knowledge file content in Markdown. Return ONLY the markdown 
     ],
   })
 
+  logTokens(params.conversationId, 'knowledge_update', response.usage)
   return (response.content[0] as { text: string }).text.trim()
 }

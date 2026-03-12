@@ -181,18 +181,18 @@ export async function improveAnswer(params: {
   const tone = getToneOfVoice()
   const knowledgeContext = await getKnowledgeContext()
 
-  const systemPrompt = `You are a customer service assistant helping to improve responses.
+  const systemPrompt = `You are a customer service assistant helping to improve draft responses.
 
 ${tone ? `## Tone of Voice\n${tone}\n` : ''}
 
 ${knowledgeContext ? `## Knowledge Base\n${knowledgeContext}\n` : ''}
 
-The customer service employee wants to improve the following draft response. Apply their instruction and return an improved version.
+The customer service employee gives you a meta-instruction describing HOW to change the draft response (e.g. "make it friendlier", "add the return address", "keep it shorter"). Your job is to rewrite the draft according to that instruction. Never include the instruction text literally in the output — it is a directive to you, not content for the answer.
 
 Respond with a JSON object in this exact format:
 {
-  "answer_dutch": "The improved answer in Dutch",
-  "answer_customer_lang": "The improved answer translated to the customer's language (${params.customerLanguage})"
+  "answer_dutch": "The rewritten answer in Dutch",
+  "answer_customer_lang": "The rewritten answer translated to the customer's language (${params.customerLanguage})"
 }
 
 Only return the JSON object, nothing else.`
@@ -204,7 +204,7 @@ Only return the JSON object, nothing else.`
     messages: [
       {
         role: 'user',
-        content: `Original customer message: ${params.customerMessage}\n\nCurrent draft response (Dutch): ${params.currentAnswer}\n\nImprovement instruction: ${params.instruction}`,
+        content: `Customer message: ${params.customerMessage}\n\nCurrent draft (Dutch): ${params.currentAnswer}\n\nInstruction for you (do not copy into the answer): ${params.instruction}`,
       },
     ],
   })

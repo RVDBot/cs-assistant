@@ -313,7 +313,7 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Bv: maak het vriendelijker, voeg retourinstructies toe..."
+                      placeholder="Instructie aan AI, bv: maak het korter, voeg het retouradres toe..."
                       value={improveInput}
                       onChange={e => patch({ improveInput: e.target.value })}
                       onKeyDown={e => e.key === 'Enter' && improve()}

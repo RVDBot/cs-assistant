@@ -22,6 +22,12 @@ async function signToken(value: string): Promise<string> {
   return `${value}.${b64sig}`
 }
 
+// GET /api/auth — check if password is required
+export async function GET() {
+  const required = !!getPassword()
+  return NextResponse.json({ passwordRequired: required })
+}
+
 // POST /api/auth — login
 export async function POST(req: NextRequest) {
   const { password } = await req.json()

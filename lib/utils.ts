@@ -26,11 +26,31 @@ export function formatDate(dateStr: string): string {
 }
 
 export const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English', nl: 'Nederlands', fr: 'Français', de: 'Deutsch',
-  es: 'Español', it: 'Italiano', pt: 'Português', ar: 'العربية',
-  tr: 'Türkçe', pl: 'Polski', ru: 'Русский', zh: '中文', ja: '日本語', ko: '한국어',
+  en: '🇬🇧 Engels',
+  nl: '🇳🇱 Nederlands',
+  fr: '🇫🇷 Frans',
+  de: '🇩🇪 Duits',
+  es: '🇪🇸 Spaans',
+  it: '🇮🇹 Italiaans',
+  pt: '🇵🇹 Portugees',
+  ar: '🇸🇦 Arabisch',
+  tr: '🇹🇷 Turks',
+  pl: '🇵🇱 Pools',
+  ru: '🇷🇺 Russisch',
+  zh: '🇨🇳 Chinees',
+  ja: '🇯🇵 Japans',
+  ko: '🇰🇷 Koreaans',
 }
 
 export function getLanguageName(code: string): string {
   return LANGUAGE_NAMES[code] || code.toUpperCase()
+}
+
+export function formatPhone(phone: string): string {
+  return phone.replace(/^whatsapp:/i, '')
+}
+
+export function formatContactName(name: string | null, phone: string): string {
+  const clean = formatPhone(phone)
+  return name ? `${name} (${clean})` : clean
 }

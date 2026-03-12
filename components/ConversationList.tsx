@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, MessageCircle, Settings } from 'lucide-react'
-import { formatDate, getLanguageName } from '@/lib/utils'
+import { Search, MessageCircle, Settings, User } from 'lucide-react'
+import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Conversation {
   id: number
@@ -48,15 +48,10 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   const filtered = conversations.filter(c => {
     const q = search.toLowerCase()
     return (
-      (c.customer_name || c.customer_phone).toLowerCase().includes(q) ||
+      formatContactName(c.customer_name, c.customer_phone).toLowerCase().includes(q) ||
       (c.last_message || '').toLowerCase().includes(q)
     )
   })
-
-  function getInitials(conv: Conversation) {
-    const name = conv.customer_name || conv.customer_phone
-    return name.slice(0, 2).toUpperCase()
-  }
 
   function getAvatarColor(phone: string) {
     const colors = ['#00a884', '#0284c7', '#7c3aed', '#dc2626', '#d97706', '#059669']
@@ -135,17 +130,17 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
           >
             {/* Avatar */}
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0"
               style={{ backgroundColor: getAvatarColor(conv.customer_phone) }}
             >
-              {getInitials(conv)}
+              <User className="w-6 h-6" />
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-whatsapp-text font-medium text-sm truncate">
-                  {conv.customer_name || conv.customer_phone}
+                  {formatContactName(conv.customer_name, conv.customer_phone)}
                 </span>
                 <span className="text-whatsapp-muted text-xs shrink-0 ml-2">
                   {formatDate(conv.updated_at)}

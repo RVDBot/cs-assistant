@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Send, ChevronDown, Languages, User, Check, CheckCheck } from 'lucide-react'
-import { formatTime, getLanguageName } from '@/lib/utils'
+import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Message {
   id: number
@@ -119,7 +119,7 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
           style={{ backgroundColor: '#00a884' }}
         >
-          {(conversation?.customer_name || conversation?.customer_phone || '?').slice(0, 2).toUpperCase()}
+          <User className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
           {editingName ? (
@@ -140,13 +140,13 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
               className="text-left group"
             >
               <div className="text-whatsapp-text font-medium text-sm flex items-center gap-1">
-                {conversation?.customer_name || conversation?.customer_phone}
+                {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '')}
                 <User className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
               </div>
             </button>
           )}
           <div className="text-whatsapp-muted text-xs">
-            {conversation?.customer_phone} &middot; {getLanguageName(conversation?.detected_language || 'en')}
+            {formatPhone(conversation?.customer_phone || '')} &middot; {getLanguageName(conversation?.detected_language || 'en')}
           </div>
         </div>
       </div>

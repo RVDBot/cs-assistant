@@ -194,10 +194,15 @@ export async function improveAnswer(params: {
   customerMessage: string
   customerLanguage: string
   conversationId?: number
+  fetchedPages?: { url: string; content: string }[]
 }): Promise<{ dutch: string; customerLang: string }> {
   const client = getClient()
   const tone = getToneOfVoice()
   const knowledgeContext = await getKnowledgeContext()
+
+  const fetchedContext = params.fetchedPages?.length
+    ? params.fetchedPages.map(p => `### Opgehaalde pagina: ${p.url}\n${p.content}`).join('\n\n')
+    : ''
 
   const systemPrompt = `You are a customer service assistant helping to improve draft responses.
 
@@ -205,7 +210,15 @@ ${tone ? `## Tone of Voice\n${tone}\n` : ''}
 
 ${knowledgeContext ? `## Knowledge Base\n${knowledgeContext}\n` : ''}
 
-The customer service employee gives you a meta-instruction describing HOW to change the draft response (e.g. "make it friendlier", "add the return address", "keep it shorter"). Your job is to rewrite the draft according to that instruction. Never include the instruction text literally in the output — it is a directive to you, not content for the answer.
+${fetchedContext ? `## Opgehaalde webpagina's (gebruik deze inhoud om het antwoord te verbeteren)\n${fetchedContext}\n` : ''}
+
+The customer service employee gives you a meta-instruction describing HOW to change the draft response. Your job is to rewrite the draft according to that instruction using any provided context above.
+
+Rules:
+- The instruction is a directive TO YOU — never copy it into the answer
+- If the instruction references a URL, that page's content has already been fetched and is shown above — use the information from it, do NOT tell the customer to visit the URL or look something up
+- Never tell the customer to visit a URL unless it is genuinely useful for them to do so (e.g. a tracking link)
+- Never mention that you looked something up or fetched a page
 
 Respond with a JSON object in this exact format:
 {

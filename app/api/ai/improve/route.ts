@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { improveAnswer } from '@/lib/claude'
 
+function extractUrls(text: string): string[] {
+  return text.match(/https?:\/\/[^\s]+/g) || []
+}
+
+async function fetchPageText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CS-Assistant/1.0)' },
+      signal: AbortSignal.timeout(10000),
+    })
+    const html = await res.text()
+    // Strip tags, collapse whitespace, limit length
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 6000)
+    return text
+  } catch {
+    return ''
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { conversation_id, current_answer, instruction } = await req.json()
 
@@ -21,6 +46,14 @@ export async function POST(req: NextRequest) {
     ORDER BY sent_at DESC LIMIT 1
   `).get(conversation_id) as { content: string } | undefined
 
+  // Fetch any URLs mentioned in the instruction so Claude can use the content
+  const urls = extractUrls(instruction)
+  const fetchedPages: { url: string; content: string }[] = []
+  for (const url of urls) {
+    const content = await fetchPageText(url)
+    if (content) fetchedPages.push({ url, content })
+  }
+
   try {
     const result = await improveAnswer({
       currentAnswer: current_answer,
@@ -28,6 +61,7 @@ export async function POST(req: NextRequest) {
       customerMessage: lastInbound?.content || '',
       customerLanguage: conv.detected_language,
       conversationId: Number(conversation_id),
+      fetchedPages,
     })
     return NextResponse.json(result)
   } catch (e) {

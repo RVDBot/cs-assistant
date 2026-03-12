@@ -80,6 +80,16 @@ function initSchema(db: Database.Database) {
 
     INSERT OR IGNORE INTO tone_of_voice (id, prompt) VALUES (1, '');
 
+    CREATE TABLE IF NOT EXISTS logs (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      level           TEXT NOT NULL DEFAULT 'info',
+      category        TEXT NOT NULL,
+      message         TEXT NOT NULL,
+      meta            TEXT,
+      conversation_id INTEGER,
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS token_usage (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
       conversation_id INTEGER,

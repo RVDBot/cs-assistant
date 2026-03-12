@@ -7,6 +7,7 @@ import AIPanel from '@/components/AIPanel'
 import Settings from '@/components/Settings'
 import ContextManager from '@/components/ContextManager'
 import KnowledgeBase from '@/components/KnowledgeBase'
+import Logs from '@/components/Logs'
 
 interface Conversation {
   id: number
@@ -22,6 +23,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const [showContext, setShowContext] = useState(false)
   const [showKnowledge, setShowKnowledge] = useState(false)
+  const [showLogs, setShowLogs] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const handleConversationLoad = useCallback((conv: Conversation) => {
@@ -57,9 +59,15 @@ export default function Home() {
       />
 
       {/* Modals */}
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <Settings
+          onClose={() => setShowSettings(false)}
+          onOpenLogs={() => { setShowSettings(false); setShowLogs(true) }}
+        />
+      )}
       {showContext && <ContextManager onClose={() => setShowContext(false)} />}
       {showKnowledge && <KnowledgeBase onClose={() => setShowKnowledge(false)} />}
+      {showLogs && <Logs onClose={() => setShowLogs(false)} />}
     </div>
   )
 }

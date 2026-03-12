@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut } from 'lucide-react'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -47,9 +47,10 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
 
 interface Props {
   onClose: () => void
+  onOpenLogs?: () => void
 }
 
-export default function Settings({ onClose }: Props) {
+export default function Settings({ onClose, onOpenLogs }: Props) {
   const [settings, setSettings] = useState({
     twilio_account_sid: '',
     twilio_auth_token: '',
@@ -293,13 +294,22 @@ export default function Settings({ onClose }: Props) {
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-whatsapp-border flex justify-between">
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 text-whatsapp-muted hover:text-red-400 text-sm transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Uitloggen
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onOpenLogs}
+              className="flex items-center gap-2 text-whatsapp-muted hover:text-whatsapp-text text-sm transition-colors"
+            >
+              <ScrollText className="w-4 h-4" />
+              Logs
+            </button>
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 text-whatsapp-muted hover:text-red-400 text-sm transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Uitloggen
+            </button>
+          </div>
           <button
             onClick={save}
             disabled={saving}

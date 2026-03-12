@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { updateKnowledgeFromAnswer } from '@/lib/claude'
 import { getKnowledgeFile, saveKnowledgeFile, KNOWLEDGE_TOPICS } from '@/lib/knowledge'
+import { log } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   const { conversation_id, answer_dutch, answer_customer_lang } = await req.json()
@@ -22,8 +23,10 @@ export async function POST(req: NextRequest) {
   let twilioSid: string | null = null
   try {
     twilioSid = await sendWhatsAppMessage(conv.customer_phone, answer_customer_lang)
+    log('info', 'twilio', 'Bericht verstuurd via Twilio', { sid: twilioSid, to: conv.customer_phone }, conversation_id)
   } catch (e) {
     console.error('Twilio send error:', e)
+    log('error', 'twilio', 'Versturen via Twilio mislukt', { error: String(e), to: conv.customer_phone }, conversation_id)
   }
 
   // Save outbound message
@@ -54,6 +57,7 @@ export async function POST(req: NextRequest) {
     updateKnowledgeInBackground(customerMessageDutch, answer_dutch, conversation_id).catch(console.error)
   }
 
+  log('info', 'ai', 'AI-antwoord verstuurd', { demo: !twilioSid }, conversation_id)
   return NextResponse.json({ ok: true, twilio_sid: twilioSid })
 }
 

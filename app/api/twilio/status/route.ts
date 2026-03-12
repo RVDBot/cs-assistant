@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { log } from '@/lib/logger'
 
 // Twilio status values in order of progression
 const STATUS_RANK: Record<string, number> = {
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
     const newRank = STATUS_RANK[status] ?? 0
     if (newRank >= currentRank) {
       db.prepare('UPDATE messages SET status = ? WHERE twilio_sid = ?').run(status, messageSid)
+      log('info', 'twilio', `Berichtstatus bijgewerkt: ${status}`, { sid: messageSid, prev: current.status })
     }
   }
 

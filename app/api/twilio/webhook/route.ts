@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { detectLanguage, translateToDutch } from '@/lib/claude'
+import { log } from '@/lib/logger'
 
 const TWIML_EMPTY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
       if (!existing.includes(reactionEmoji)) {
         existing.push(reactionEmoji)
         db.prepare('UPDATE messages SET reactions = ? WHERE id = ?').run(JSON.stringify(existing), msg.id)
+        log('info', 'bericht', `Reactie ontvangen: ${reactionEmoji}`, { from, reactionMessageSid })
       }
     }
     return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
@@ -65,12 +67,15 @@ export async function POST(req: NextRequest) {
     }
   } catch (e) {
     console.error('Translation error:', e)
+    log('error', 'ai', 'Vertaling mislukt', { error: String(e), from }, conv.id)
   }
 
   db.prepare(`
     INSERT INTO messages (conversation_id, direction, content, content_dutch, language, twilio_sid, status)
     VALUES (?, 'inbound', ?, ?, ?, ?, 'received')
   `).run(conv.id, messageBody, dutchContent, language, messageSid)
+
+  log('info', 'bericht', `Inkomend bericht ontvangen (${language.toUpperCase()})`, { from, sid: messageSid }, conv.id)
 
   return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
 }

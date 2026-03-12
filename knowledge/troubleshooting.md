@@ -2,6 +2,10 @@
 
 ## Returns & Damaged Items
 
-**Q: I received a damaged item. What should I do?**
+**V: Ik heb een beschadigd artikel ontvangen. Wat moet ik doen?**
 
-Contact customer service as soon as possible and include a video of the damage. The support team will review the situation and provide an appropriate solution.
+Neem zo snel mogelijk contact op met de klantenservice en voeg een video van de schade bij. Het ondersteuningsteam beoordeelt de situatie en biedt een passende oplossing.
+
+**V: Wat is het retourbeleid als ik niet tevreden ben met mijn aankoop?**
+
+Er is momenteel geen specifiek retourbeleid voor ontevreden klanten beschikbaar. Klanten wordt geadviseerd contact op te nemen via de contactpagina, zodat de klantenservice de situatie persoonlijk kan bekijken en een passende oplossing kan bieden.

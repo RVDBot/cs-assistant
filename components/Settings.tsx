@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -20,13 +21,16 @@ export default function Settings({ onClose }: Props) {
     twilio_phone_number: '',
     anthropic_api_key: '',
     claude_model: 'claude-opus-4-6',
+    app_password: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [showKey, setShowKey] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const router = useRouter()
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -48,6 +52,11 @@ export default function Settings({ onClose }: Props) {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function logout() {
+    await fetch('/api/auth', { method: 'DELETE' })
+    router.push('/login')
   }
 
   function Field({ label, id, value, onChange, type = 'text', show, onToggle, placeholder }: {
@@ -190,11 +199,35 @@ export default function Settings({ onClose }: Props) {
                 </select>
               </div>
             </section>
+
+            <hr className="border-whatsapp-border" />
+
+            {/* Security */}
+            <section className="space-y-4">
+              <h3 className="text-whatsapp-text font-medium text-sm">Beveiliging</h3>
+              <Field
+                label="App wachtwoord"
+                id="app_password"
+                value={settings.app_password}
+                onChange={v => setSettings(p => ({ ...p, app_password: v }))}
+                show={showPassword}
+                onToggle={() => setShowPassword(!showPassword)}
+                placeholder="Stel een wachtwoord in"
+              />
+              <p className="text-whatsapp-muted text-[11px]">Stel dit in om de app te beveiligen. Laat leeg om beveiliging uit te schakelen.</p>
+            </section>
           </div>
         )}
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-whatsapp-border flex justify-end">
+        <div className="px-5 py-4 border-t border-whatsapp-border flex justify-between">
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 text-whatsapp-muted hover:text-red-400 text-sm transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Uitloggen
+          </button>
           <button
             onClick={save}
             disabled={saving}

@@ -7,6 +7,7 @@ const SETTING_KEYS = [
   'twilio_phone_number',
   'anthropic_api_key',
   'claude_model',
+  'app_password',
 ]
 
 export async function GET() {
@@ -15,7 +16,7 @@ export async function GET() {
   const settings: Record<string, string> = {}
   for (const row of rows) {
     // Mask sensitive values
-    if (row.key === 'twilio_auth_token' || row.key === 'anthropic_api_key') {
+    if (row.key === 'twilio_auth_token' || row.key === 'anthropic_api_key' || row.key === 'app_password') {
       settings[row.key] = row.value ? '••••••••' + row.value.slice(-4) : ''
     } else {
       settings[row.key] = row.value

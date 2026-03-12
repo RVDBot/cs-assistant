@@ -1,6 +1,7 @@
 services:
   cs-assistant:
     image: ghcr.io/rvdbot/cs-assistant:latest
+    pull_policy: always
     ports:
       - "3010:3000"
     volumes:

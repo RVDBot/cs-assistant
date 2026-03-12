@@ -30,7 +30,8 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
-    pathname === '/api/twilio/webhook'
+    pathname === '/api/twilio/webhook' ||
+    pathname === '/api/twilio/status'
   ) {
     return NextResponse.next()
   }

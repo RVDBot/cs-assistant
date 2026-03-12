@@ -5,6 +5,7 @@ const SETTING_KEYS = [
   'twilio_account_sid',
   'twilio_auth_token',
   'twilio_phone_number',
+  'base_url',
   'anthropic_api_key',
   'claude_model',
   'app_password',

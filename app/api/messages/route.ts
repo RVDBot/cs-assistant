@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
 
   const result = db.prepare(`
     INSERT INTO messages (conversation_id, direction, content, content_customer_lang, language, twilio_sid, status)
-    VALUES (?, 'outbound', ?, ?, ?, ?, 'sent')
-  `).run(conversation_id, content, content, conv.detected_language, twilioSid, twilioSid ? 'sent' : 'failed')
+    VALUES (?, 'outbound', ?, ?, ?, ?, ?)
+  `).run(conversation_id, content, content, conv.detected_language, twilioSid, twilioSid ? 'sent' : 'demo')
 
   db.prepare(`
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?

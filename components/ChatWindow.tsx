@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, ChevronDown, Languages, User, Check, CheckCheck } from 'lucide-react'
+import { Send, ChevronDown, Languages, User, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Message {
@@ -14,6 +14,7 @@ interface Message {
   language: string | null
   sent_at: string
   status: string
+  reactions: string
 }
 
 interface Conversation {
@@ -27,17 +28,21 @@ interface Conversation {
 interface Props {
   conversationId: number | null
   onConversationLoad?: (conv: Conversation) => void
+  onMessageSent?: () => void
 }
 
-export default function ChatWindow({ conversationId, onConversationLoad }: Props) {
+export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
   const [showTranslation, setShowTranslation] = useState<Record<number, boolean>>({})
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [manualText, setManualText] = useState('')
+  const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const load = useCallback(async () => {
     if (!conversationId) return
@@ -85,6 +90,34 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
 
   function toggleTranslation(id: number) {
     setShowTranslation(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  async function sendManual() {
+    if (!conversation || !manualText.trim() || sending) return
+    setSending(true)
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversation.id, content: manualText.trim() }),
+      })
+      if (res.ok) {
+        setManualText('')
+        onMessageSent?.()
+        await load()
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendManual()
+    }
   }
 
   if (!conversationId) {
@@ -159,6 +192,13 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
         {messages.map((msg, i) => {
           const isInbound = msg.direction === 'inbound'
           const showDate = i === 0 || new Date(messages[i - 1].sent_at).toDateString() !== new Date(msg.sent_at).toDateString()
+          const reactions: string[] = (() => { try { return JSON.parse(msg.reactions || '[]') } catch { return [] } })()
+
+          // For outbound messages: show content_customer_lang (what was sent to customer)
+          // Fall back to content if not available
+          const outboundText = msg.content_customer_lang || msg.content
+          // Show Dutch toggle for outbound if different from what was sent
+          const outboundHasDutch = !isInbound && msg.content && msg.content !== outboundText
 
           return (
             <div key={msg.id} className="fade-in">
@@ -171,7 +211,7 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
               )}
               <div className={`flex ${isInbound ? 'justify-start' : 'justify-end'} mb-1`}>
                 <div className={`max-w-[70%] min-w-[80px] ${isInbound ? 'bubble-inbound' : 'bubble-outbound'} px-3 py-2 rounded-lg`}>
-                  {/* Inbound: show dutch translation if available */}
+                  {/* Inbound: show dutch translation toggle */}
                   {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (
                     <div className="mb-1">
                       <button
@@ -190,8 +230,27 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
                     </div>
                   )}
 
+                  {/* Outbound: show Dutch toggle (internal note for CS) */}
+                  {outboundHasDutch && (
+                    <div className="mb-1">
+                      <button
+                        onClick={() => toggleTranslation(msg.id)}
+                        className="flex items-center gap-1 text-whatsapp-teal text-[11px] hover:underline mb-1"
+                      >
+                        <Languages className="w-3 h-3" />
+                        {showTranslation[msg.id] ? 'Verstuurd bericht tonen' : 'NL-concept tonen'}
+                        <ChevronDown className={`w-3 h-3 transition-transform ${showTranslation[msg.id] ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showTranslation[msg.id] && (
+                        <div className="text-whatsapp-text/80 text-xs bg-black/20 rounded px-2 py-1 mb-1 italic">
+                          🇳🇱 {msg.content}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {msg.content}
+                    {isInbound ? msg.content : outboundText}
                   </p>
 
                   <div className={`flex items-center gap-1 mt-1 ${isInbound ? 'justify-start' : 'justify-end'}`}>
@@ -203,12 +262,47 @@ export default function ChatWindow({ conversationId, onConversationLoad }: Props
                       <Check className="w-3 h-3 text-whatsapp-muted" />
                     )}
                   </div>
+
+                  {/* Reactions */}
+                  {reactions.length > 0 && (
+                    <div className={`flex flex-wrap gap-1 mt-1.5 ${isInbound ? 'justify-start' : 'justify-end'}`}>
+                      {reactions.map((emoji, idx) => (
+                        <span key={idx} className="text-base leading-none">{emoji}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )
         })}
         <div ref={bottomRef} />
+      </div>
+
+      {/* Manual send input */}
+      <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2">
+        <textarea
+          ref={inputRef}
+          value={manualText}
+          onChange={e => setManualText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Typ een bericht... (Enter om te sturen, Shift+Enter voor nieuwe regel)"
+          rows={1}
+          className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+          style={{ height: 'auto' }}
+          onInput={e => {
+            const t = e.currentTarget
+            t.style.height = 'auto'
+            t.style.height = `${Math.min(t.scrollHeight, 128)}px`
+          }}
+        />
+        <button
+          onClick={sendManual}
+          disabled={sending || !manualText.trim()}
+          className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+        >
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </button>
       </div>
     </div>
   )

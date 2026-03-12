@@ -54,6 +54,7 @@ export default function Settings({ onClose }: Props) {
     twilio_account_sid: '',
     twilio_auth_token: '',
     twilio_phone_number: '',
+    base_url: '',
     anthropic_api_key: '',
     claude_model: 'claude-opus-4-6',
     app_password: '',
@@ -146,6 +147,13 @@ export default function Settings({ onClose }: Props) {
                 onChange={v => setSettings(p => ({ ...p, twilio_phone_number: v }))}
                 placeholder="whatsapp:+14155238886"
               />
+              <Field
+                label="App URL (voor bezorgstatus)"
+                id="base_url"
+                value={settings.base_url}
+                onChange={v => setSettings(p => ({ ...p, base_url: v }))}
+                placeholder="https://jouw-domein.com"
+              />
               <div className="space-y-1.5">
                 <label className="text-whatsapp-muted text-xs font-medium">Webhook URL (kopieer naar Twilio)</label>
                 <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2">
@@ -159,6 +167,23 @@ export default function Settings({ onClose }: Props) {
                 </div>
                 <p className="text-whatsapp-muted text-[11px]">Stel deze URL in als &quot;Incoming Message&quot; webhook in de Twilio WhatsApp Sandbox of je actieve nummer.</p>
               </div>
+              {settings.base_url && (
+                <div className="space-y-1.5">
+                  <label className="text-whatsapp-muted text-xs font-medium">Status Callback URL (voor bezorgd/gelezen)</label>
+                  <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2">
+                    <code className="text-whatsapp-teal text-xs flex-1 truncate">
+                      {settings.base_url.replace(/\/$/, '')}/api/twilio/status
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(`${settings.base_url.replace(/\/$/, '')}/api/twilio/status`)}
+                      className="text-whatsapp-muted hover:text-whatsapp-text text-xs shrink-0"
+                    >
+                      Kopieer
+                    </button>
+                  </div>
+                  <p className="text-whatsapp-muted text-[11px]">Wordt automatisch meegestuurd bij elk uitgaand bericht voor bezorgd/gelezen status.</p>
+                </div>
+              )}
             </section>
 
             <hr className="border-whatsapp-border" />

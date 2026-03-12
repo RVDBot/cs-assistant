@@ -51,8 +51,10 @@ function initSchema(db: Database.Database) {
       sent_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       status                TEXT NOT NULL DEFAULT 'received',
       twilio_sid            TEXT,
+      reactions             TEXT NOT NULL DEFAULT '[]',
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
+
 
     CREATE TABLE IF NOT EXISTS context_files (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +80,9 @@ function initSchema(db: Database.Database) {
 
     INSERT OR IGNORE INTO tone_of_voice (id, prompt) VALUES (1, '');
   `)
+
+  // Safe migrations for existing databases
+  try { db.exec(`ALTER TABLE messages ADD COLUMN reactions TEXT NOT NULL DEFAULT '[]'`) } catch {}
 }
 
 export interface Conversation {

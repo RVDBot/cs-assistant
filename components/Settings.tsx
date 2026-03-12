@@ -10,6 +10,41 @@ const CLAUDE_MODELS = [
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Snelst & goedkoopst)' },
 ]
 
+function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
+  label: string
+  id: string
+  value: string
+  onChange: (v: string) => void
+  show?: boolean
+  onToggle?: () => void
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="text-whatsapp-muted text-xs font-medium">{label}</label>
+      <div className="relative">
+        <input
+          id={id}
+          type={onToggle ? (show ? 'text' : 'password') : 'text'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted pr-10"
+        />
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-whatsapp-muted hover:text-whatsapp-text"
+          >
+            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   onClose: () => void
 }
@@ -57,42 +92,6 @@ export default function Settings({ onClose }: Props) {
   async function logout() {
     await fetch('/api/auth', { method: 'DELETE' })
     router.push('/login')
-  }
-
-  function Field({ label, id, value, onChange, type = 'text', show, onToggle, placeholder }: {
-    label: string
-    id: string
-    value: string
-    onChange: (v: string) => void
-    type?: string
-    show?: boolean
-    onToggle?: () => void
-    placeholder?: string
-  }) {
-    return (
-      <div className="space-y-1.5">
-        <label htmlFor={id} className="text-whatsapp-muted text-xs font-medium">{label}</label>
-        <div className="relative">
-          <input
-            id={id}
-            type={onToggle ? (show ? 'text' : 'password') : type}
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted pr-10"
-          />
-          {onToggle && (
-            <button
-              type="button"
-              onClick={onToggle}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-whatsapp-muted hover:text-whatsapp-text"
-            >
-              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          )}
-        </div>
-      </div>
-    )
   }
 
   return (

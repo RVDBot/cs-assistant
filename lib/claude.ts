@@ -232,7 +232,7 @@ export async function updateKnowledgeFromAnswer(params: {
   const response = await client.messages.create({
     model: getModel(),
     max_tokens: 4096,
-    system: `You maintain a customer service knowledge base. Given an existing knowledge file and a new customer interaction, update the knowledge file to incorporate any new information, corrections, or improvements. Keep the file in clean Markdown format. Only add genuinely new information. Do not repeat existing content.`,
+    system: `You maintain a customer service knowledge base written entirely in Dutch. Given an existing knowledge file and a new customer interaction (already translated to Dutch), update the knowledge file to incorporate any new information, corrections, or improvements. Keep the file in clean Markdown format in Dutch. Only add genuinely new information. Do not repeat existing content. Always write in Dutch, regardless of any language used in the interaction.`,
     messages: [
       {
         role: 'user',

@@ -43,16 +43,15 @@ export async function POST(req: NextRequest) {
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?
   `).run(answer_customer_lang.slice(0, 100), conversation_id)
 
-  // Async: update knowledge base from this interaction
+  // Async: update knowledge base from this interaction (always in Dutch)
   const lastInbound = db.prepare(`
-    SELECT content FROM messages WHERE conversation_id = ? AND direction = 'inbound'
+    SELECT content, content_dutch FROM messages WHERE conversation_id = ? AND direction = 'inbound'
     ORDER BY sent_at DESC LIMIT 1
-  `).get(conversation_id) as { content: string } | undefined
+  `).get(conversation_id) as { content: string; content_dutch: string | null } | undefined
 
   if (lastInbound && answer_dutch) {
-    // Determine relevant topic based on a simple keyword approach
-    // In a full system you'd use AI to detect the topic
-    updateKnowledgeInBackground(lastInbound.content, answer_dutch).catch(console.error)
+    const customerMessageDutch = lastInbound.content_dutch || lastInbound.content
+    updateKnowledgeInBackground(customerMessageDutch, answer_dutch).catch(console.error)
   }
 
   return NextResponse.json({ ok: true, twilio_sid: twilioSid })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Sparkles, Send, RefreshCw, Copy, ChevronDown, ChevronUp, Loader2, Languages } from 'lucide-react'
 import { getLanguageName } from '@/lib/utils'
 
@@ -31,6 +31,13 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [showDutch, setShowDutch] = useState(true)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setAnswer(null)
+    setError(null)
+    setShowImprove(false)
+    setImproveInput('')
+  }, [conversation?.id])
 
   const generate = useCallback(async () => {
     if (!conversation) return

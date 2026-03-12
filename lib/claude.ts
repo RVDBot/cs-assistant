@@ -97,6 +97,10 @@ export async function translateToLanguage(text: string, targetLang: string): Pro
   return (response.content[0] as { text: string }).text.trim()
 }
 
+function stripCodeFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+}
+
 interface ConversationHistory {
   role: 'user' | 'assistant'
   content: string
@@ -156,7 +160,7 @@ Important: Only return the JSON object, nothing else.`
 
   const raw = (response.content[0] as { text: string }).text.trim()
   try {
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(stripCodeFences(raw))
     return {
       dutch: parsed.answer_dutch || '',
       customerLang: parsed.answer_customer_lang || '',
@@ -207,7 +211,7 @@ Only return the JSON object, nothing else.`
 
   const raw = (response.content[0] as { text: string }).text.trim()
   try {
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(stripCodeFences(raw))
     return {
       dutch: parsed.answer_dutch || '',
       customerLang: parsed.answer_customer_lang || '',

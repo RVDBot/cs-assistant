@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, ChevronDown, Languages, User, Check, CheckCheck, Loader2 } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Message {
@@ -211,25 +211,6 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               )}
               <div className={`flex ${isInbound ? 'justify-start' : 'justify-end'} mb-1`}>
                 <div className={`max-w-[70%] min-w-[80px] ${isInbound ? 'bubble-inbound' : 'bubble-outbound'} px-3 py-2 rounded-lg`}>
-                  {/* Inbound: show dutch translation toggle */}
-                  {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (
-                    <div className="mb-1">
-                      <button
-                        onClick={() => toggleTranslation(msg.id)}
-                        className="flex items-center gap-1 text-whatsapp-teal text-[11px] hover:underline mb-1"
-                      >
-                        <Languages className="w-3 h-3" />
-                        {showTranslation[msg.id] ? 'Origineel tonen' : 'Vertaling tonen (NL)'}
-                        <ChevronDown className={`w-3 h-3 transition-transform ${showTranslation[msg.id] ? 'rotate-180' : ''}`} />
-                      </button>
-                      {showTranslation[msg.id] && (
-                        <div className="text-whatsapp-text/80 text-xs bg-black/20 rounded px-2 py-1 mb-1 italic">
-                          🇳🇱 {msg.content_dutch}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Outbound: show Dutch toggle (internal note for CS) */}
                   {outboundHasDutch && (
                     <div className="mb-1">
@@ -252,6 +233,15 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap break-words">
                     {isInbound ? msg.content : outboundText}
                   </p>
+
+                  {/* Inbound: dutch translation always shown below message */}
+                  {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (
+                    <div className="mt-1.5">
+                      <div className="text-whatsapp-text/70 text-xs bg-black/20 rounded px-2 py-1 italic">
+                        🇳🇱 {msg.content_dutch}
+                      </div>
+                    </div>
+                  )}
 
                   <div className={`flex items-center gap-1 mt-1 ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <span className="text-whatsapp-muted text-[10px]">{formatTime(msg.sent_at)}</span>

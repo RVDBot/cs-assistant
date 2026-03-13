@@ -235,6 +235,14 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
 
   return (
     <div className="w-[380px] min-w-[320px] flex flex-col bg-whatsapp-panel border-l border-whatsapp-border">
+      {/* Token usage */}
+      {tokens && (tokens.input > 0 || tokens.output > 0) && (
+        <div className="flex items-center justify-between px-4 py-1.5 bg-whatsapp-input border-b border-whatsapp-border text-[11px] text-whatsapp-muted">
+          <span>Tokens dit gesprek</span>
+          <span className="font-mono">{tokens.input.toLocaleString('nl-NL')} in · {tokens.output.toLocaleString('nl-NL')} uit</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-4 py-3 border-b border-whatsapp-border">
         <div className="flex items-center gap-2">
@@ -267,16 +275,6 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
             </>
           )}
         </button>
-
-        {/* Token usage for this conversation */}
-        {tokens && (tokens.input > 0 || tokens.output > 0) && (
-          <div className="flex items-center justify-between text-[11px] text-whatsapp-muted bg-whatsapp-input rounded-lg px-3 py-1.5">
-            <span>Tokens dit gesprek</span>
-            <span className="font-mono">
-              {tokens.input.toLocaleString('nl-NL')} in · {tokens.output.toLocaleString('nl-NL')} uit
-            </span>
-          </div>
-        )}
 
         {/* Error */}
         {error && (

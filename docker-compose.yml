@@ -5,9 +5,13 @@ services:
     ports:
       - "3010:3000"
     volumes:
-      - ./data:/app/data
-      - ./knowledge:/app/knowledge
+      - cs_data:/app/data
+      - cs_knowledge:/app/knowledge
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/cs-assistant.db
     restart: unless-stopped
+
+volumes:
+  cs_data:
+  cs_knowledge:

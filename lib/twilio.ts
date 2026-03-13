@@ -25,14 +25,11 @@ export async function sendWhatsAppMessage(to: string, body: string): Promise<str
   const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
   const fromFormatted = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`
 
-  const params: Record<string, string> = {
+  const params = {
     from: fromFormatted,
     to: toFormatted,
     body,
-  }
-
-  if (baseUrl) {
-    params.statusCallback = `${baseUrl.replace(/\/$/, '')}/api/twilio/status`
+    ...(baseUrl ? { statusCallback: `${baseUrl.replace(/\/$/, '')}/api/twilio/status` } : {}),
   }
 
   const message = await client.messages.create(params)

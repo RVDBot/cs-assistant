@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2 } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft } from 'lucide-react'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Message {
@@ -29,9 +29,10 @@ interface Props {
   conversationId: number | null
   onConversationLoad?: (conv: Conversation) => void
   onMessageSent?: () => void
+  onBack?: () => void
 }
 
-export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent }: Props) {
+export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -148,8 +149,13 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     <div className="flex-1 flex flex-col min-w-0 bg-[#222e35]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-whatsapp-panel border-b border-whatsapp-border">
+        {onBack && (
+          <button onClick={onBack} className="md:hidden p-1 -ml-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
           style={{ backgroundColor: '#00a884' }}
         >
           <User className="w-5 h-5" />

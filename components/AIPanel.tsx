@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Sparkles, Send, RefreshCw, Copy, ChevronDown, ChevronUp, Loader2, Languages } from 'lucide-react'
+import { Sparkles, Send, RefreshCw, Copy, ChevronDown, ChevronUp, Loader2, Languages, X } from 'lucide-react'
 import { getLanguageName } from '@/lib/utils'
 
 interface Conversation {
@@ -43,9 +43,10 @@ function emptyState(): ConvState {
 interface Props {
   conversation: Conversation | null
   onMessageSent?: () => void
+  onClose?: () => void
 }
 
-export default function AIPanel({ conversation, onMessageSent }: Props) {
+export default function AIPanel({ conversation, onMessageSent, onClose }: Props) {
   // Per-conversation state cache: keeps answer/state when switching away and back
   const cache = useRef<Record<number, ConvState>>({})
   const convId = conversation?.id ?? null
@@ -245,9 +246,16 @@ export default function AIPanel({ conversation, onMessageSent }: Props) {
 
       {/* Header */}
       <div className="px-4 py-3 border-b border-whatsapp-border">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-whatsapp-teal" />
-          <h2 className="text-whatsapp-text font-semibold text-sm">AI Assistent</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-whatsapp-teal" />
+            <h2 className="text-whatsapp-text font-semibold text-sm">AI Assistent</h2>
+          </div>
+          {onClose && (
+            <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
         <p className="text-whatsapp-muted text-xs mt-0.5">
           Klant schrijft in: <span className="text-whatsapp-teal">{langName}</span>

@@ -2,8 +2,6 @@ services:
   cs-assistant:
     image: ghcr.io/rvdbot/cs-assistant:latest
     pull_policy: always
-    ports:
-      - "3010:3000"
     volumes:
       - cs_data:/app/data
       - cs_knowledge:/app/knowledge
@@ -12,6 +10,21 @@ services:
       - DATABASE_PATH=/app/data/cs-assistant.db
     restart: unless-stopped
 
+  caddy:
+    image: caddy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - cs-assistant
+
 volumes:
   cs_data:
   cs_knowledge:
+  caddy_data:
+  caddy_config:

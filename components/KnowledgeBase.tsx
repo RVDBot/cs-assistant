@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, BookOpen, Save, Loader2, ChevronRight } from 'lucide-react'
+import { X, BookOpen, Save, Loader2, ChevronRight, ArrowLeft } from 'lucide-react'
 
 interface KnowledgeTopic {
   slug: string
@@ -62,14 +62,29 @@ export default function KnowledgeBase({ onClose }: Props) {
 
   const hasChanges = file && editContent !== file.content
 
+  // On mobile: 'list' shows topics, 'detail' shows editor
+  const mobileShowDetail = !!selectedSlug
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-[800px] max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-whatsapp-panel border border-whatsapp-border md:rounded-xl w-full md:w-[800px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border shrink-0">
           <div className="flex items-center gap-2">
+            {/* Mobile: back button when in detail view */}
+            {mobileShowDetail && (
+              <button
+                onClick={() => setSelectedSlug(null)}
+                className="md:hidden p-1 -ml-1 mr-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <BookOpen className="w-5 h-5 text-whatsapp-teal" />
-            <h2 className="text-whatsapp-text font-semibold">Kennisbank</h2>
+            <h2 className="text-whatsapp-text font-semibold">
+              {mobileShowDetail && file ? <span className="md:hidden">{file.title}</span> : null}
+              <span className={mobileShowDetail ? 'hidden md:inline' : ''}>Kennisbank</span>
+            </h2>
           </div>
           <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text">
             <X className="w-5 h-5" />
@@ -77,8 +92,8 @@ export default function KnowledgeBase({ onClose }: Props) {
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Topic list */}
-          <div className="w-64 border-r border-whatsapp-border overflow-y-auto">
+          {/* Topic list — full width on mobile when no topic selected, sidebar on desktop */}
+          <div className={`${mobileShowDetail ? 'hidden' : 'flex'} md:flex flex-col w-full md:w-64 border-r border-whatsapp-border overflow-y-auto`}>
             <div className="p-3">
               <p className="text-whatsapp-muted text-xs px-2 py-1">
                 De AI schrijft automatisch in deze bestanden op basis van verzonden antwoorden.
@@ -99,8 +114,8 @@ export default function KnowledgeBase({ onClose }: Props) {
             ))}
           </div>
 
-          {/* Editor */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Editor — full width on mobile when topic selected, flex-1 on desktop */}
+          <div className={`${mobileShowDetail ? 'flex' : 'hidden'} md:flex flex-1 flex-col overflow-hidden`}>
             {!selectedSlug ? (
               <div className="flex-1 flex items-center justify-center text-whatsapp-muted">
                 <div className="text-center">
@@ -110,12 +125,12 @@ export default function KnowledgeBase({ onClose }: Props) {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-whatsapp-border">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-whatsapp-border shrink-0">
                   <div>
-                    <h3 className="text-whatsapp-text font-medium text-sm">{file?.title}</h3>
+                    <h3 className="hidden md:block text-whatsapp-text font-medium text-sm">{file?.title}</h3>
                     {file?.updatedAt && (
                       <p className="text-whatsapp-muted text-xs">
-                        Laatst bijgewerkt: {new Date(file.updatedAt).toLocaleString('nl-NL')}
+                        Bijgewerkt: {new Date(file.updatedAt).toLocaleString('nl-NL')}
                       </p>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon } from 'lucide-react'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
 interface Message {
@@ -30,9 +30,12 @@ interface Props {
   onConversationLoad?: (conv: Conversation) => void
   onMessageSent?: () => void
   onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenContext?: () => void
+  onOpenKnowledge?: () => void
 }
 
-export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onBack }: Props) {
+export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onBack, onOpenSettings, onOpenContext, onOpenKnowledge }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -41,9 +44,21 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [nameInput, setNameInput] = useState('')
   const [manualText, setManualText] = useState('')
   const [sending, setSending] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const load = useCallback(async () => {
     if (!conversationId) return
@@ -148,7 +163,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#222e35]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-whatsapp-panel border-b border-whatsapp-border">
+      <div className="flex items-center gap-3 px-4 py-3 bg-whatsapp-panel border-b border-whatsapp-border shrink-0">
         {onBack && (
           <button onClick={onBack} className="md:hidden p-1 -ml-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -187,6 +202,35 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           <div className="text-whatsapp-muted text-xs">
             {formatPhone(conversation?.customer_phone || '')} &middot; {getLanguageName(conversation?.detected_language || 'en')}
           </div>
+        </div>
+
+        {/* Mobile hamburger menu */}
+        <div className="md:hidden relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(v => !v)}
+            className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-whatsapp-panel border border-whatsapp-border rounded-lg shadow-xl z-50 overflow-hidden">
+              {onOpenKnowledge && (
+                <button onClick={() => { setShowMenu(false); onOpenKnowledge() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
+                  <BookOpen className="w-4 h-4 text-whatsapp-muted" /> Kennisbank
+                </button>
+              )}
+              {onOpenContext && (
+                <button onClick={() => { setShowMenu(false); onOpenContext() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
+                  <FileText className="w-4 h-4 text-whatsapp-muted" /> Context
+                </button>
+              )}
+              {onOpenSettings && (
+                <button onClick={() => { setShowMenu(false); onOpenSettings() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
+                  <SettingsIcon className="w-4 h-4 text-whatsapp-muted" /> Instellingen
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -282,7 +326,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           value={manualText}
           onChange={e => setManualText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Typ een bericht... (Enter om te sturen, Shift+Enter voor nieuwe regel)"
+          placeholder="Typ een bericht..."
           rows={1}
           className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
           style={{ height: 'auto' }}

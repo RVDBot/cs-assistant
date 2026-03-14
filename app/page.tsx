@@ -72,6 +72,9 @@ export default function Home() {
           onConversationLoad={handleConversationLoad}
           onMessageSent={handleMessageSent}
           onBack={handleBack}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenContext={() => setShowContext(true)}
+          onOpenKnowledge={() => setShowKnowledge(true)}
         />
       </div>
 

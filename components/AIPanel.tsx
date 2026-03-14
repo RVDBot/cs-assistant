@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Sparkles, Send, RefreshCw, Copy, ChevronDown, ChevronUp, Loader2, Languages, X } from 'lucide-react'
+import { Sparkles, Send, Copy, Loader2, Languages, X } from 'lucide-react'
 import { getLanguageName } from '@/lib/utils'
 
 interface Conversation {
@@ -21,7 +21,6 @@ interface ConvState {
   generating: boolean
   improving: boolean
   improveInput: string
-  showImprove: boolean
   showDutch: boolean
   error: string | null
   tokens: { input: number; output: number } | null
@@ -33,7 +32,6 @@ function emptyState(): ConvState {
     generating: false,
     improving: false,
     improveInput: '',
-    showImprove: false,
     showDutch: true,
     error: null,
     tokens: null,
@@ -104,7 +102,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
   const generate = useCallback(async () => {
     if (!conversation) return
     const forConvId = conversation.id
-    patch({ generating: true, error: null, answer: null, showImprove: false })
+    patch({ generating: true, error: null, answer: null })
 
     try {
       const res = await fetch('/api/ai/generate', {
@@ -201,10 +199,10 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      patch({ answer: null, showImprove: false })
+      patch({ answer: null })
       // Clear from cache too so it doesn't restore after send
       if (cache.current[conversation.id]) {
-        cache.current[conversation.id] = { ...cache.current[conversation.id], answer: null, showImprove: false }
+        cache.current[conversation.id] = { ...cache.current[conversation.id], answer: null }
       }
       onMessageSent?.()
     } catch (e) {
@@ -232,7 +230,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
   }
 
   const langName = getLanguageName(conversation.detected_language)
-  const { answer, generating, improving, improveInput, showImprove, showDutch, error, tokens } = state
+  const { answer, generating, improving, improveInput, showDutch, error, tokens } = state
 
   return (
     <div className="w-[380px] min-w-[320px] flex flex-col bg-whatsapp-panel border-l border-whatsapp-border">
@@ -333,36 +331,25 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
             )}
 
             {/* Improve section */}
-            <div>
-              <button
-                onClick={() => patch({ showImprove: !showImprove })}
-                className="flex items-center gap-1 text-whatsapp-muted text-xs hover:text-whatsapp-text transition-colors"
-              >
-                {showImprove ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                Antwoord verbeteren
-              </button>
-
-              {showImprove && (
-                <div className="mt-2 space-y-2 fade-in">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Instructie aan AI, bv: maak het korter, voeg het retouradres toe..."
-                      value={improveInput}
-                      onChange={e => patch({ improveInput: e.target.value })}
-                      onKeyDown={e => e.key === 'Enter' && improve()}
-                      className="flex-1 bg-whatsapp-input text-whatsapp-text text-xs px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
-                    />
-                    <button
-                      onClick={improve}
-                      disabled={improving || !improveInput.trim()}
-                      className="p-2 bg-whatsapp-teal disabled:opacity-40 text-white rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
-                    >
-                      {improving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <p className="text-whatsapp-muted text-xs">Antwoord verbeteren</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Instructie aan AI, bv: maak het korter..."
+                  value={improveInput}
+                  onChange={e => patch({ improveInput: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && improve()}
+                  className="flex-1 bg-whatsapp-input text-whatsapp-text text-xs px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                />
+                <button
+                  onClick={improve}
+                  disabled={improving || !improveInput.trim()}
+                  className="p-2 bg-whatsapp-teal disabled:opacity-40 text-white rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                >
+                  {improving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {/* Send button */}

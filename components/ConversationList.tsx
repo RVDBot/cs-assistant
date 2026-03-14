@@ -145,7 +145,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
       </div>
 
       {/* Conversations */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {loading && (
           <div className="flex items-center justify-center h-20 text-whatsapp-muted text-sm">Laden...</div>
         )}

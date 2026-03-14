@@ -261,7 +261,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-4">
 
         {/* Generate button */}
         <button

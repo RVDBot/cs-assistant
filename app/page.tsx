@@ -54,7 +54,7 @@ export default function Home() {
     <div className="flex h-screen overflow-hidden bg-whatsapp-dark">
 
       {/* Conversation list — full screen on mobile when mobileView==='list', fixed width on desktop */}
-      <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col h-full w-full md:w-auto`}>
+      <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col h-full w-full md:w-auto overflow-hidden`}>
         <ConversationList
           selectedId={selectedConvId}
           onSelect={handleSelect}
@@ -65,7 +65,7 @@ export default function Home() {
       </div>
 
       {/* Chat window — full screen on mobile when mobileView==='chat', flex-1 on desktop */}
-      <div className={`${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
+      <div className={`${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden`}>
         <ChatWindow
           key={`${selectedConvId}-${refreshKey}`}
           conversationId={selectedConvId}
@@ -79,7 +79,7 @@ export default function Home() {
       </div>
 
       {/* AI panel — hidden on mobile (shown via floating button), visible on desktop */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex md:min-h-0 md:overflow-hidden">
         <AIPanel
           conversation={conversation}
           onMessageSent={handleMessageSent}

@@ -74,7 +74,7 @@ export default function Logs({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-[820px] max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-whatsapp-panel border border-whatsapp-border md:rounded-xl w-full md:w-[820px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border">
           <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export default function Logs({ onClose }: Props) {
         </div>
 
         {/* Log list */}
-        <div className="flex-1 overflow-y-auto font-mono text-xs">
+        <div className="flex-1 overflow-y-auto min-h-0 font-mono text-xs">
           {loading ? (
             <div className="flex items-center justify-center h-32 text-whatsapp-muted">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -137,27 +137,38 @@ export default function Logs({ onClose }: Props) {
                 className="border-b border-whatsapp-border/50 hover:bg-whatsapp-input/30 transition-colors"
               >
                 <button
-                  className="w-full flex items-start gap-3 px-5 py-2.5 text-left"
+                  className="w-full flex flex-col md:flex-row md:items-start gap-1 md:gap-3 px-4 py-2.5 text-left"
                   onClick={() => setExpanded(expanded === entry.id ? null : entry.id)}
                 >
-                  <span className="text-whatsapp-muted shrink-0 w-36">
-                    {new Date(entry.created_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
-                  <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${LEVEL_STYLES[entry.level] || 'text-whatsapp-muted'}`}>
-                    {entry.level}
-                  </span>
-                  <span className={`shrink-0 w-16 ${CATEGORY_STYLES[entry.category] || 'text-whatsapp-muted'}`}>
-                    {entry.category}
-                  </span>
-                  <span className="text-whatsapp-text flex-1 truncate">{entry.message}</span>
-                  {entry.customer_phone && (
-                    <span className="text-whatsapp-muted shrink-0 ml-2">
-                      {entry.customer_name || formatPhone(entry.customer_phone)}
+                  {/* Top row on mobile: time + badges */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-whatsapp-muted">
+                      {new Date(entry.created_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
-                  )}
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${LEVEL_STYLES[entry.level] || 'text-whatsapp-muted'}`}>
+                      {entry.level}
+                    </span>
+                    <span className={`${CATEGORY_STYLES[entry.category] || 'text-whatsapp-muted'}`}>
+                      {entry.category}
+                    </span>
+                    {entry.customer_phone && (
+                      <span className="text-whatsapp-muted md:hidden ml-auto">
+                        {entry.customer_name || formatPhone(entry.customer_phone)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Message row */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-whatsapp-text truncate flex-1">{entry.message}</span>
+                    {entry.customer_phone && (
+                      <span className="text-whatsapp-muted hidden md:inline shrink-0 ml-2">
+                        {entry.customer_name || formatPhone(entry.customer_phone)}
+                      </span>
+                    )}
+                  </div>
                 </button>
                 {expanded === entry.id && entry.meta && (
-                  <pre className="px-5 pb-3 text-whatsapp-muted whitespace-pre-wrap break-all leading-relaxed">
+                  <pre className="px-4 pb-3 text-whatsapp-muted whitespace-pre-wrap break-all leading-relaxed">
                     {formatMeta(entry.meta)}
                   </pre>
                 )}

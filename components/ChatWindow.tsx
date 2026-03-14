@@ -235,7 +235,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1">
+      <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-1">
         {messages.length === 0 && (
           <div className="text-center text-whatsapp-muted text-sm py-8">Geen berichten</div>
         )}

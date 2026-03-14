@@ -333,19 +333,24 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
             {/* Improve section */}
             <div className="space-y-1.5">
               <p className="text-whatsapp-muted text-xs">Antwoord verbeteren</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
+              <div className="flex gap-2 items-end">
+                <textarea
                   placeholder="Instructie aan AI, bv: maak het korter..."
                   value={improveInput}
                   onChange={e => patch({ improveInput: e.target.value })}
-                  onKeyDown={e => e.key === 'Enter' && improve()}
-                  className="flex-1 bg-whatsapp-input text-whatsapp-text text-xs px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); improve() } }}
+                  rows={1}
+                  className="flex-1 bg-whatsapp-input text-whatsapp-text text-xs px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+                  onInput={e => {
+                    const t = e.currentTarget
+                    t.style.height = 'auto'
+                    t.style.height = `${Math.min(t.scrollHeight, 128)}px`
+                  }}
                 />
                 <button
                   onClick={improve}
                   disabled={improving || !improveInput.trim()}
-                  className="p-2 bg-whatsapp-teal disabled:opacity-40 text-white rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                  className="p-2 bg-whatsapp-teal disabled:opacity-40 text-white rounded-lg hover:bg-whatsapp-teal/90 transition-colors shrink-0"
                 >
                   {improving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 </button>

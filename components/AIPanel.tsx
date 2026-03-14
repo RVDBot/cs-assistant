@@ -233,7 +233,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
   const { answer, generating, improving, improveInput, showDutch, error, tokens } = state
 
   return (
-    <div className="w-[380px] min-w-[320px] flex flex-col bg-whatsapp-panel border-l border-whatsapp-border">
+    <div className="w-[380px] min-w-[320px] flex flex-col min-h-0 bg-whatsapp-panel border-l border-whatsapp-border">
       {/* Token usage */}
       {tokens && (tokens.input > 0 || tokens.output > 0) && (
         <div className="flex items-center justify-between px-4 py-1.5 bg-whatsapp-input border-b border-whatsapp-border text-[11px] text-whatsapp-muted">

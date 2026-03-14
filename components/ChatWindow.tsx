@@ -161,7 +161,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#222e35]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#222e35]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-whatsapp-panel border-b border-whatsapp-border shrink-0">
         {onBack && (
@@ -320,7 +320,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       </div>
 
       {/* Manual send input */}
-      <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2">
+      <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
         <textarea
           ref={inputRef}
           value={manualText}

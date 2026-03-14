@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, MessageCircle, Settings, User, Menu, BookOpen, FileText, X } from 'lucide-react'
+import { Search, MessageCircle, Settings, User, Menu, BookOpen, FileText, X, Bell } from 'lucide-react'
 import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
+import { useNotifications } from '@/hooks/useNotifications'
 
 interface Conversation {
   id: number
@@ -27,19 +28,54 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const prevUnreads = useRef<Map<number, number>>(new Map())
+  const initialLoadDone = useRef(false)
+  const selectedIdRef = useRef(selectedId)
+  const { permission, requestPermission, notify } = useNotifications()
+
+  selectedIdRef.current = selectedId
+
+  // Check if banner was dismissed previously
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('notif-dismissed') === '1') {
+      setBannerDismissed(true)
+    }
+  }, [])
+
+  // Update document title with unread count
+  useEffect(() => {
+    const total = conversations.reduce((sum, c) => sum + c.unread_count, 0)
+    document.title = total > 0 ? `(${total}) CS Assistant` : 'CS Assistant'
+  }, [conversations])
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/conversations')
-      const data = await res.json()
+      const data: Conversation[] = await res.json()
+
+      // Detect new messages and send notifications
+      if (initialLoadDone.current) {
+        for (const conv of data) {
+          const prev = prevUnreads.current.get(conv.id) || 0
+          if (conv.unread_count > prev && conv.id !== selectedIdRef.current) {
+            const name = formatContactName(conv.customer_name, conv.customer_phone)
+            const body = conv.last_message || 'Nieuw bericht'
+            notify(name, body, () => onSelect(conv.id))
+          }
+        }
+      }
+      initialLoadDone.current = true
+      prevUnreads.current = new Map(data.map(c => [c.id, c.unread_count]))
+
       setConversations(data)
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [notify, onSelect])
 
   useEffect(() => {
     load()
@@ -129,6 +165,26 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
           )}
         </div>
       </div>
+
+      {/* Notification permission banner */}
+      {permission === 'default' && !bannerDismissed && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-whatsapp-teal/10 border-b border-whatsapp-border">
+          <Bell className="w-4 h-4 text-whatsapp-teal shrink-0" />
+          <span className="text-whatsapp-text text-xs flex-1">Meldingen voor nieuwe berichten?</span>
+          <button
+            onClick={requestPermission}
+            className="text-xs bg-whatsapp-teal text-white px-2.5 py-1 rounded-lg hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+          >
+            Inschakelen
+          </button>
+          <button
+            onClick={() => { setBannerDismissed(true); localStorage.setItem('notif-dismissed', '1') }}
+            className="text-whatsapp-muted hover:text-whatsapp-text transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="px-3 py-2">

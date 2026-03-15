@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText } from 'lucide-react'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -48,6 +48,87 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
 interface Props {
   onClose: () => void
   onOpenLogs?: () => void
+}
+
+function NotificationSettings() {
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('notif-enabled') !== '0'
+  })
+  const [permission, setPermission] = useState<string>('default')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermission(Notification.permission)
+    }
+  }, [])
+
+  function toggle() {
+    const next = !enabled
+    setEnabled(next)
+    localStorage.setItem('notif-enabled', next ? '1' : '0')
+  }
+
+  async function requestPerm() {
+    if (!('Notification' in window)) return
+    const result = await Notification.requestPermission()
+    setPermission(result)
+  }
+
+  function sendTest() {
+    if (Notification.permission !== 'granted') return
+    new Notification('CS Assistant', {
+      body: 'Meldingen werken! 🎉',
+      icon: '/favicon-192x192.png',
+    })
+  }
+
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+
+  return (
+    <div className="space-y-3">
+      {!supported && (
+        <p className="text-whatsapp-muted text-xs">Je browser ondersteunt geen meldingen.</p>
+      )}
+      {supported && permission === 'granted' && (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {enabled ? <Bell className="w-4 h-4 text-whatsapp-teal" /> : <BellOff className="w-4 h-4 text-whatsapp-muted" />}
+              <span className="text-whatsapp-text text-sm">{enabled ? 'Meldingen aan' : 'Meldingen uit'}</span>
+            </div>
+            <button
+              onClick={toggle}
+              className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-whatsapp-teal' : 'bg-whatsapp-border'}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'left-5' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <button
+            onClick={sendTest}
+            className="text-xs text-whatsapp-teal hover:underline"
+          >
+            Stuur testmelding
+          </button>
+        </>
+      )}
+      {supported && permission === 'default' && (
+        <button
+          onClick={requestPerm}
+          className="flex items-center gap-2 text-sm bg-whatsapp-teal text-white px-3 py-1.5 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+        >
+          <Bell className="w-4 h-4" />
+          Meldingen inschakelen
+        </button>
+      )}
+      {supported && permission === 'denied' && (
+        <p className="text-whatsapp-muted text-xs">Meldingen zijn geblokkeerd door je browser. Wijzig dit in je browserinstellingen.</p>
+      )}
+      <p className="text-whatsapp-muted text-[11px]">
+        Status: {!supported ? 'niet ondersteund' : permission === 'granted' ? 'toegestaan' : permission === 'denied' ? 'geblokkeerd' : 'niet ingesteld'}
+      </p>
+    </div>
+  )
 }
 
 export default function Settings({ onClose, onOpenLogs }: Props) {
@@ -271,6 +352,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               ) : (
                 <p className="text-whatsapp-muted text-xs">Nog geen tokengebruik geregistreerd.</p>
               )}
+            </section>
+
+            <hr className="border-whatsapp-border" />
+
+            {/* Notifications */}
+            <section className="space-y-4">
+              <h3 className="text-whatsapp-text font-medium text-sm">Meldingen</h3>
+              <NotificationSettings />
             </section>
 
             <hr className="border-whatsapp-border" />

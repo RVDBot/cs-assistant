@@ -1,3 +1,0 @@
-cs.speedropeshop.com {
-    reverse_proxy cs-assistant:3000
-}

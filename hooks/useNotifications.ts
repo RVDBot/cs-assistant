@@ -22,6 +22,7 @@ export function useNotifications() {
   const notify = useCallback((title: string, body: string, onClick?: () => void) => {
     if (typeof window === 'undefined' || !('Notification' in window)) return
     if (Notification.permission !== 'granted') return
+    if (localStorage.getItem('notif-enabled') === '0') return
     if (!document.hidden) return // don't notify when tab is active
 
     const n = new Notification(title, {

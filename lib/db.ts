@@ -7,18 +7,8 @@ const DB_PATH = process.env.DATABASE_PATH
   : path.join(process.cwd(), 'data', 'cs-assistant.db')
 
 const dir = path.dirname(DB_PATH)
-console.log('[db] DB_PATH:', DB_PATH)
-console.log('[db] dir exists:', fs.existsSync(dir))
-console.log('[db] cwd:', process.cwd())
-try {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-    console.log('[db] dir created')
-  }
-  const stat = fs.statSync(dir)
-  console.log('[db] dir mode:', stat.mode.toString(8), 'uid:', stat.uid, 'gid:', stat.gid)
-} catch (e) {
-  console.error('[db] dir setup error:', e)
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir, { recursive: true })
 }
 
 let _db: Database.Database | null = null

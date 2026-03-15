@@ -75,12 +75,22 @@ function NotificationSettings() {
     setPermission(result)
   }
 
-  function sendTest() {
+  async function sendTest() {
     if (Notification.permission !== 'granted') return
-    new Notification('CS Assistant', {
-      body: 'Meldingen werken! 🎉',
-      icon: '/favicon-192x192.png',
-    })
+    // Use service worker notification (works on iOS PWA)
+    const reg = await navigator.serviceWorker?.getRegistration()
+    if (reg) {
+      reg.showNotification('CS Assistant', {
+        body: 'Meldingen werken!',
+        icon: '/favicon-192x192.png',
+        badge: '/favicon-192x192.png',
+      })
+    } else {
+      new Notification('CS Assistant', {
+        body: 'Meldingen werken!',
+        icon: '/favicon-192x192.png',
+      })
+    }
   }
 
   const supported = typeof window !== 'undefined' && 'Notification' in window

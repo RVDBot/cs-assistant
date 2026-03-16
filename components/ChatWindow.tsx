@@ -48,6 +48,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [sending, setSending] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showOrders, setShowOrders] = useState(false)
+  const [orderCount, setOrderCount] = useState<number>(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -84,7 +85,13 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     setLoading(true)
     setMessages([])
     setConversation(null)
+    setOrderCount(0)
     load()
+    // Fetch order count from DB (no WC API call)
+    fetch(`/api/orders?conversation_id=${conversationId}&count=1`)
+      .then(r => r.json())
+      .then(d => setOrderCount(d.count || 0))
+      .catch(() => {})
     const interval = setInterval(load, 3000)
     return () => clearInterval(interval)
   }, [conversationId, load])
@@ -204,7 +211,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
             >
               <Package className="w-3 h-3" />
-              <span className="hidden sm:inline">Bestellingen</span>
+              <span className="hidden sm:inline">Bestellingen{orderCount > 0 ? ` (${orderCount})` : ''}</span>
             </button>
           </div>
         </div>
@@ -352,7 +359,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
       {/* Orders modal */}
       {showOrders && conversation && (
-        <OrdersModal conversationId={conversation.id} onClose={() => setShowOrders(false)} />
+        <OrdersModal
+          conversationId={conversation.id}
+          onClose={() => setShowOrders(false)}
+          onOrderCountChange={setOrderCount}
+        />
       )}
     </div>
   )

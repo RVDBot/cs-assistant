@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle } from 'lucide-react'
+import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface Address {
   first_name: string
@@ -51,6 +51,7 @@ interface Order {
 interface Props {
   conversationId: number
   onClose: () => void
+  onOrderCountChange?: (count: number) => void
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -83,10 +84,11 @@ function formatCurrency(amount: string, currency: string): string {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: currency || 'EUR' }).format(num)
 }
 
-export default function OrdersModal({ conversationId, onClose }: Props) {
+export default function OrdersModal({ conversationId, onClose, onOrderCountChange }: Props) {
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [searching, setSearching] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -95,29 +97,65 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
 
   useEffect(() => {
-    loadOrders()
+    loadCachedOrders()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
 
-  async function loadOrders() {
-    setLoading(true)
+  async function loadCachedOrders() {
+    setInitialLoading(true)
     setError(null)
     try {
+      // Load cached data instantly (no WC API call)
       const res = await fetch(`/api/orders?conversation_id=${conversationId}`)
       const data = await res.json()
+
       if (data.error && !data.orders?.length) {
         setError(data.error)
       }
-      setOrders(data.orders || [])
+
+      const loadedOrders = data.orders || []
+      setOrders(loadedOrders)
       setDetectedOrderNumbers(data.detectedOrderNumbers || [])
       setDetectedEmails(data.detectedEmails || [])
-      if (data.orders?.length > 0) {
-        setSelectedOrderId(data.orders[0].id)
+      if (loadedOrders.length > 0) {
+        setSelectedOrderId(loadedOrders[0].id)
+        onOrderCountChange?.(loadedOrders.length)
+      }
+
+      // If we got cached data, refresh in background
+      if (data.cached && loadedOrders.length > 0) {
+        refreshOrders()
       }
     } catch {
       setError('Kon bestellingen niet laden')
     } finally {
-      setLoading(false)
+      setInitialLoading(false)
+    }
+  }
+
+  async function refreshOrders() {
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/orders?conversation_id=${conversationId}&refresh=1`)
+      const data = await res.json()
+
+      if (data.refreshError) {
+        setError(data.refreshError)
+      }
+
+      const refreshedOrders = data.orders || []
+      if (refreshedOrders.length > 0) {
+        setOrders(refreshedOrders)
+        onOrderCountChange?.(refreshedOrders.length)
+        // Keep selection if it still exists, otherwise select first
+        if (!refreshedOrders.find((o: Order) => o.id === selectedOrderId)) {
+          setSelectedOrderId(refreshedOrders[0].id)
+        }
+      }
+    } catch {
+      // Silent fail — cached data is still shown
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -142,7 +180,9 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
         setOrders(prev => {
           const existingIds = new Set(prev.map(o => o.id))
           const newOrders = data.orders.filter((o: Order) => !existingIds.has(o.id))
-          return [...prev, ...newOrders]
+          const merged = [...prev, ...newOrders]
+          onOrderCountChange?.(merged.length)
+          return merged
         })
         setSelectedOrderId(data.orders[0].id)
         setSearchInput('')
@@ -161,7 +201,11 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversation_id: conversationId, wc_order_id: orderId }),
       })
-      setOrders(prev => prev.filter(o => o.id !== orderId))
+      setOrders(prev => {
+        const updated = prev.filter(o => o.id !== orderId)
+        onOrderCountChange?.(updated.length)
+        return updated
+      })
       if (selectedOrderId === orderId) {
         setSelectedOrderId(orders.find(o => o.id !== orderId)?.id || null)
       }
@@ -189,15 +233,24 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
           <h2 className="text-whatsapp-text font-semibold flex items-center gap-2">
             <Package className="w-5 h-5 text-whatsapp-teal" />
             Bestellingen
+            {orders.length > 0 && <span className="text-whatsapp-muted text-sm font-normal">({orders.length})</span>}
+            {refreshing && <Loader2 className="w-4 h-4 animate-spin text-whatsapp-muted" />}
           </h2>
-          <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {orders.length > 0 && !refreshing && (
+              <button onClick={refreshOrders} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors" title="Vernieuwen">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
-          {loading ? (
+          {initialLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-whatsapp-teal" />
               <span className="ml-2 text-whatsapp-muted text-sm">Bestellingen zoeken...</span>
@@ -218,8 +271,9 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
                     onClick={() => setShowDropdown(v => !v)}
                     className="w-full flex items-center justify-between bg-whatsapp-input border border-whatsapp-border rounded-lg px-3 py-2.5 text-sm text-whatsapp-text hover:border-whatsapp-teal transition-colors"
                   >
-                    <span>
+                    <span className="flex items-center gap-2">
                       {selectedOrder?.number || 'Selecteer bestelling'} — {selectedOrder ? formatDate(selectedOrder.dateCreated) : ''}
+                      {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-whatsapp-muted transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                   </button>
@@ -245,7 +299,10 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
               {/* Single order info */}
               {orders.length === 1 && selectedOrder && (
                 <div className="flex items-center justify-between">
-                  <span className="text-whatsapp-text font-medium">{selectedOrder.number}</span>
+                  <span className="text-whatsapp-text font-medium flex items-center gap-2">
+                    {selectedOrder.number}
+                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
+                  </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selectedOrder.status] || 'bg-whatsapp-input text-whatsapp-muted'}`}>
                     {selectedOrder.statusLabel}
                   </span>
@@ -363,7 +420,7 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
                 </div>
               )}
 
-              {/* Error order (WC data could not be fetched) */}
+              {/* Error order */}
               {selectedOrder?.error && (
                 <div className="bg-whatsapp-input rounded-lg p-3 text-whatsapp-muted text-sm">
                   Bestelgegevens konden niet worden opgehaald uit WooCommerce.
@@ -378,7 +435,7 @@ export default function OrdersModal({ conversationId, onClose }: Props) {
               )}
 
               {/* No orders found */}
-              {orders.length === 0 && !loading && !error && (
+              {orders.length === 0 && !initialLoading && !error && (
                 <div className="text-center text-whatsapp-muted text-sm py-6">
                   Geen bestellingen gevonden voor deze klant.
                 </div>

@@ -114,6 +114,7 @@ function initSchema(db: Database.Database) {
 
   // Safe migrations for existing databases
   try { db.exec(`ALTER TABLE messages ADD COLUMN reactions TEXT NOT NULL DEFAULT '[]'`) } catch {}
+  try { db.exec(`ALTER TABLE customer_orders ADD COLUMN order_data TEXT`) } catch {}
 }
 
 export interface Conversation {

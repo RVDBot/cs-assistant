@@ -99,6 +99,17 @@ function initSchema(db: Database.Database) {
       created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
     );
+
+    CREATE TABLE IF NOT EXISTS customer_orders (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      wc_order_id     INTEGER NOT NULL,
+      order_number    TEXT NOT NULL,
+      customer_email  TEXT,
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+      UNIQUE(conversation_id, wc_order_id)
+    );
   `)
 
   // Safe migrations for existing databases

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package } from 'lucide-react'
+import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 
@@ -46,6 +47,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [manualText, setManualText] = useState('')
   const [sending, setSending] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showOrders, setShowOrders] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -195,8 +197,15 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               </div>
             </button>
           )}
-          <div className="text-whatsapp-muted text-xs">
-            {formatPhone(conversation?.customer_phone || '')} &middot; {getLanguageName(conversation?.detected_language || 'en')}
+          <div className="text-whatsapp-muted text-xs flex items-center gap-1.5">
+            <span>{formatPhone(conversation?.customer_phone || '')} &middot; {getLanguageName(conversation?.detected_language || 'en')}</span>
+            <button
+              onClick={() => setShowOrders(true)}
+              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+            >
+              <Package className="w-3 h-3" />
+              <span className="hidden sm:inline">Bestellingen</span>
+            </button>
           </div>
         </div>
 
@@ -340,6 +349,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
+
+      {/* Orders modal */}
+      {showOrders && conversation && (
+        <OrdersModal conversationId={conversation.id} onClose={() => setShowOrders(false)} />
+      )}
     </div>
   )
 }

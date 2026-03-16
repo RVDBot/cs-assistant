@@ -105,7 +105,12 @@ function buildTrackingLink(provider: string, number: string, existingLink: strin
 async function wcFetch(endpoint: string, params: Record<string, string> = {}): Promise<unknown> {
   const { storeUrl, consumerKey, consumerSecret } = getCredentials()
   if (!storeUrl || !consumerKey || !consumerSecret) {
-    throw new Error('WooCommerce niet geconfigureerd')
+    const missing = [
+      !storeUrl && 'WC_STORE_URL',
+      !consumerKey && 'WC_CONSUMER_KEY',
+      !consumerSecret && 'WC_CONSUMER_SECRET',
+    ].filter(Boolean).join(', ')
+    throw new Error(`WooCommerce niet geconfigureerd (ontbreekt: ${missing})`)
   }
 
   const url = new URL(`${storeUrl}/wp-json/wc/v3/${endpoint}`)

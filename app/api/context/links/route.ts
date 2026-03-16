@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { validateExternalUrl } from '@/lib/security'
 
 export async function GET() {
   const db = getDb()
@@ -10,6 +11,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { url } = await req.json()
   if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 })
+
+  // H3 fix: validate URL before fetching
+  const check = validateExternalUrl(url)
+  if (!check.valid) return NextResponse.json({ error: check.error }, { status: 400 })
 
   // Fetch the page content
   let title: string | null = null

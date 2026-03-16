@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json(result)
   } catch (e) {
-    const error = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error }, { status: 500 })
+    console.error('AI generate error:', e)
+    return NextResponse.json({ error: 'Er ging iets mis bij het genereren van een antwoord.' }, { status: 500 })
   }
 }

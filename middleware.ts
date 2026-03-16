@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'change-me-in-production'
+function getSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret || secret === 'change-me-in-production') {
+    throw new Error('NEXTAUTH_SECRET environment variable is required and must be changed from default')
+  }
+  return secret
+}
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
@@ -9,9 +15,19 @@ async function verifyToken(token: string): Promise<boolean> {
     const payload = token.slice(0, dot)
     const b64sig = token.slice(dot + 1)
 
+    // Verify expiry from payload
+    const parts = payload.split('|')
+    if (parts.length >= 2) {
+      const issuedAt = parseInt(parts[1], 10)
+      const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days
+      if (isNaN(issuedAt) || Date.now() - issuedAt > maxAge) {
+        return false
+      }
+    }
+
     const key = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(SECRET),
+      new TextEncoder().encode(getSecret()),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify']
@@ -47,5 +63,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|.*\\.png$).*)'],
 }

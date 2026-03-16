@@ -8,6 +8,8 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/cs-assistant.db
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required - generate with: openssl rand -base64 32}
+      - BASE_URL=${BASE_URL:-https://cs.speedropeshop.com}
     restart: unless-stopped
 
   caddy:

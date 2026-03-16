@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { log } from '@/lib/logger'
+import { validateTwilioSignature } from '@/lib/security'
 
 // Twilio status values in order of progression
 const STATUS_RANK: Record<string, number> = {
@@ -11,6 +12,17 @@ const STATUS_RANK: Record<string, number> = {
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const params = Object.fromEntries(new URLSearchParams(body))
+
+  // C3 fix: validate Twilio webhook signature
+  const signature = req.headers.get('x-twilio-signature') || ''
+  const baseUrl = process.env.BASE_URL || ''
+  if (baseUrl) {
+    const statusUrl = `${baseUrl.replace(/\/$/, '')}/api/twilio/status`
+    if (!validateTwilioSignature(statusUrl, params, signature)) {
+      log('error', 'twilio', 'Ongeldige status webhook signature', { ip: req.headers.get('x-forwarded-for') })
+      return new NextResponse('Forbidden', { status: 403 })
+    }
+  }
 
   const messageSid: string = params.MessageSid || ''
   const status: string = (params.MessageStatus || '').toLowerCase()

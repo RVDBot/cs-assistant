@@ -2,12 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { detectLanguage, translateToDutch } from '@/lib/claude'
 import { log } from '@/lib/logger'
+import { validateTwilioSignature } from '@/lib/security'
 
 const TWIML_EMPTY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const params = Object.fromEntries(new URLSearchParams(body))
+
+  // C3 fix: validate Twilio webhook signature
+  const signature = req.headers.get('x-twilio-signature') || ''
+  const baseUrl = process.env.BASE_URL || ''
+  if (baseUrl) {
+    const webhookUrl = `${baseUrl.replace(/\/$/, '')}/api/twilio/webhook`
+    if (!validateTwilioSignature(webhookUrl, params, signature)) {
+      log('error', 'twilio', 'Ongeldige webhook signature', { ip: req.headers.get('x-forwarded-for') })
+      return new NextResponse('Forbidden', { status: 403 })
+    }
+  }
 
   const from: string = params.From || ''
   const messageBody: string = params.Body || ''
@@ -23,6 +35,11 @@ export async function POST(req: NextRequest) {
 
   // Handle incoming reaction
   if (reactionEmoji && reactionMessageSid) {
+    // L2 fix: validate reaction is bounded
+    if (reactionEmoji.length > 20) {
+      return new NextResponse('Bad Request', { status: 400 })
+    }
+
     const msg = db.prepare('SELECT id, reactions FROM messages WHERE twilio_sid = ?').get(reactionMessageSid) as
       { id: number; reactions: string } | undefined
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { hashPassword } from '@/lib/security'
 
 const SETTING_KEYS = [
   'twilio_account_sid',
@@ -11,14 +12,16 @@ const SETTING_KEYS = [
   'app_password',
 ]
 
+const SENSITIVE_KEYS = ['twilio_auth_token', 'anthropic_api_key', 'app_password']
+
 export async function GET() {
   const db = getDb()
   const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
   const settings: Record<string, string> = {}
   for (const row of rows) {
-    // Mask sensitive values
-    if (row.key === 'twilio_auth_token' || row.key === 'anthropic_api_key' || row.key === 'app_password') {
-      settings[row.key] = row.value ? '••••••••' + row.value.slice(-4) : ''
+    // H6 fix: fully mask sensitive values, don't leak any characters
+    if (SENSITIVE_KEYS.includes(row.key)) {
+      settings[row.key] = row.value ? '••••••••' : ''
     } else {
       settings[row.key] = row.value
     }
@@ -37,9 +40,17 @@ export async function PUT(req: NextRequest) {
 
   for (const key of SETTING_KEYS) {
     if (body[key] !== undefined) {
-      // Don't overwrite masked values
-      if (body[key].includes('••••')) continue
-      upsert.run(key, body[key])
+      // Don't overwrite with masked placeholder
+      if (body[key] === '••••••••') continue
+
+      let value = body[key]
+
+      // H1 fix: hash password before storing
+      if (key === 'app_password' && value) {
+        value = hashPassword(value)
+      }
+
+      upsert.run(key, value)
     }
   }
 

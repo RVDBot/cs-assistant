@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { improveAnswer } from '@/lib/claude'
+import { validateExternalUrl } from '@/lib/security'
 
 function extractUrls(text: string): string[] {
   return text.match(/https?:\/\/[^\s]+/g) || []
@@ -8,6 +9,10 @@ function extractUrls(text: string): string[] {
 
 async function fetchPageText(url: string): Promise<string> {
   try {
+    // H3 fix: validate URL before fetching
+    const check = validateExternalUrl(url)
+    if (!check.valid) return ''
+
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CS-Assistant/1.0)' },
       signal: AbortSignal.timeout(10000),
@@ -65,7 +70,8 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json(result)
   } catch (e) {
-    const error = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error }, { status: 500 })
+    // M2 fix: don't leak internal error details
+    console.error('AI improve error:', e)
+    return NextResponse.json({ error: 'Er ging iets mis bij het verbeteren.' }, { status: 500 })
   }
 }

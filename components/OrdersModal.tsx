@@ -84,6 +84,10 @@ function formatCurrency(amount: string, currency: string): string {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: currency || 'EUR' }).format(num)
 }
 
+function sortByDateDesc(orders: Order[]): Order[] {
+  return [...orders].sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
+}
+
 export default function OrdersModal({ conversationId, onClose, onOrderCountChange }: Props) {
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
@@ -113,7 +117,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
         setError(data.error)
       }
 
-      const loadedOrders = data.orders || []
+      const loadedOrders = sortByDateDesc(data.orders || [])
       setOrders(loadedOrders)
       setDetectedOrderNumbers(data.detectedOrderNumbers || [])
       setDetectedEmails(data.detectedEmails || [])
@@ -143,11 +147,11 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
         setError(data.refreshError)
       }
 
-      const refreshedOrders = data.orders || []
+      const refreshedOrders = sortByDateDesc(data.orders || [])
       if (refreshedOrders.length > 0) {
         setOrders(refreshedOrders)
         onOrderCountChange?.(refreshedOrders.length)
-        // Keep selection if it still exists, otherwise select first
+        // Keep selection if it still exists, otherwise select newest
         if (!refreshedOrders.find((o: Order) => o.id === selectedOrderId)) {
           setSelectedOrderId(refreshedOrders[0].id)
         }
@@ -176,15 +180,15 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
       } else if (data.orders?.length === 0) {
         setError('Geen bestellingen gevonden')
       } else if (data.orders?.length > 0) {
-        // Merge with existing orders (avoid duplicates)
+        // Merge with existing orders (avoid duplicates), sort by date
         setOrders(prev => {
           const existingIds = new Set(prev.map(o => o.id))
           const newOrders = data.orders.filter((o: Order) => !existingIds.has(o.id))
-          const merged = [...prev, ...newOrders]
+          const merged = sortByDateDesc([...prev, ...newOrders])
           onOrderCountChange?.(merged.length)
           return merged
         })
-        setSelectedOrderId(data.orders[0].id)
+        setSelectedOrderId(sortByDateDesc(data.orders)[0].id)
         setSearchInput('')
       }
     } catch {

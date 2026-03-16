@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, MessageCircle, Settings, User, Menu, BookOpen, FileText, X, Bell } from 'lucide-react'
+import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell } from 'lucide-react'
 import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 import { useNotifications } from '@/hooks/useNotifications'
+import MonsterAvatar from '@/components/MonsterAvatar'
 
 interface Conversation {
   id: number
@@ -99,13 +100,6 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
       (c.last_message || '').toLowerCase().includes(q)
     )
   })
-
-  function getAvatarColor(phone: string) {
-    const colors = ['#00a884', '#0284c7', '#7c3aed', '#dc2626', '#d97706', '#059669']
-    let hash = 0
-    for (const c of phone) hash = (hash + c.charCodeAt(0)) % colors.length
-    return colors[hash]
-  }
 
   return (
     <div className="flex flex-col h-full w-full md:w-[360px] md:min-w-[300px] border-r border-whatsapp-border bg-whatsapp-panel">
@@ -218,12 +212,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
             onClick={() => onSelect(conv.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors border-b border-whatsapp-border/30 text-left ${selectedId === conv.id ? 'bg-whatsapp-input' : ''}`}
           >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0"
-              style={{ backgroundColor: getAvatarColor(conv.customer_phone) }}
-            >
-              <User className="w-6 h-6" />
-            </div>
+            <MonsterAvatar phone={conv.customer_phone} size={48} className="shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-whatsapp-text font-medium text-sm truncate">

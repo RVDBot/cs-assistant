@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSecret } from '@/lib/security'
 
-function getSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET
-  if (!secret || secret === 'change-me-in-production') {
-    throw new Error('NEXTAUTH_SECRET environment variable is required and must be changed from default')
-  }
-  return secret
-}
+export const runtime = 'nodejs'
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
@@ -25,9 +20,10 @@ async function verifyToken(token: string): Promise<boolean> {
       }
     }
 
+    const secret = getSecret()
     const key = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(getSecret()),
+      new TextEncoder().encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify']

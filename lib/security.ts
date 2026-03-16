@@ -1,18 +1,72 @@
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
 
-// --- Secret validation ---
+// --- Secret management ---
+// Auto-generates and persists a secret to the data volume if not provided via env var.
+// This avoids storing secrets in the public repo or docker-compose.
+
+let _cachedSecret: string | null = null
+
+function getSecretFilePath(): string {
+  const dbPath = process.env.DATABASE_PATH || './data/cs-assistant.db'
+  return path.join(path.dirname(dbPath), '.secret')
+}
 
 export function getSecret(): string {
-  const secret = (process.env.NEXTAUTH_SECRET || '').trim()
-  if (!secret) {
-    // Log available env vars starting with NEXT for debugging
-    const envKeys = Object.keys(process.env).filter(k => k.startsWith('NEXT') || k === 'NODE_ENV').join(', ')
-    throw new Error(`NEXTAUTH_SECRET environment variable is required. Available: [${envKeys}]`)
+  if (_cachedSecret) return _cachedSecret
+
+  // 1. Check env var first
+  const envSecret = (process.env.NEXTAUTH_SECRET || '').trim()
+  if (envSecret && envSecret !== 'change-me-in-production') {
+    _cachedSecret = envSecret
+    return envSecret
   }
-  if (secret === 'change-me-in-production') {
-    throw new Error('NEXTAUTH_SECRET must be changed from the default value')
+
+  // 2. Try to read from persistent file on data volume
+  const secretFile = getSecretFilePath()
+  try {
+    const fileSecret = fs.readFileSync(secretFile, 'utf-8').trim()
+    if (fileSecret) {
+      _cachedSecret = fileSecret
+      return fileSecret
+    }
+  } catch {
+    // File doesn't exist yet, will generate below
   }
-  return secret
+
+  // 3. Try database
+  try {
+    const { getDb } = require('./db')
+    const db = getDb()
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('_auth_secret') as { value: string } | undefined
+    if (row?.value) {
+      // Also persist to file for middleware edge runtime
+      try { fs.writeFileSync(secretFile, row.value, { mode: 0o600 }) } catch {}
+      _cachedSecret = row.value
+      return row.value
+    }
+  } catch {}
+
+  // 4. Auto-generate and persist to both file and database
+  const generated = crypto.randomBytes(32).toString('base64')
+  try {
+    const dir = path.dirname(secretFile)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(secretFile, generated, { mode: 0o600 })
+  } catch (e) {
+    console.error('Warning: could not persist secret to file', e)
+  }
+  try {
+    const { getDb } = require('./db')
+    const db = getDb()
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('_auth_secret', generated)
+  } catch (e) {
+    console.error('Warning: could not persist secret to database', e)
+  }
+
+  _cachedSecret = generated
+  return generated
 }
 
 // --- Password hashing (scrypt) ---

@@ -8,8 +8,8 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/cs-assistant.db
-      - NEXTAUTH_SECRET
-      - BASE_URL
+      - NEXTAUTH_SECRET=pc1JCyd8OTzh69RsKoFaa9ObZ8RTC5BbMalR0rQAsPo=
+      - BASE_URL=https://cs.speedropeshop.com
     restart: unless-stopped
 
   caddy:

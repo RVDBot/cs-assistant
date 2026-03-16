@@ -3,9 +3,11 @@ import crypto from 'crypto'
 // --- Secret validation ---
 
 export function getSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET
+  const secret = (process.env.NEXTAUTH_SECRET || '').trim()
   if (!secret) {
-    throw new Error('NEXTAUTH_SECRET environment variable is required')
+    // Log available env vars starting with NEXT for debugging
+    const envKeys = Object.keys(process.env).filter(k => k.startsWith('NEXT') || k === 'NODE_ENV').join(', ')
+    throw new Error(`NEXTAUTH_SECRET environment variable is required. Available: [${envKeys}]`)
   }
   if (secret === 'change-me-in-production') {
     throw new Error('NEXTAUTH_SECRET must be changed from the default value')

@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 
+const VALID_LEVELS = ['info', 'warn', 'error']
+const VALID_CATEGORIES = ['bericht', 'ai', 'twilio', 'systeem']
+
 export async function GET(req: NextRequest) {
   const db = getDb()
   const level = req.nextUrl.searchParams.get('level') || ''
   const category = req.nextUrl.searchParams.get('category') || ''
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || '200'), 500)
+
+  if (level && !VALID_LEVELS.includes(level)) {
+    return NextResponse.json({ error: 'Invalid level' }, { status: 400 })
+  }
+  if (category && !VALID_CATEGORIES.includes(category)) {
+    return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+  }
 
   const conditions: string[] = []
   const params: (string | number)[] = []

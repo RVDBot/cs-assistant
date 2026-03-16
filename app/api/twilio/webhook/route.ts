@@ -83,8 +83,7 @@ export async function POST(req: NextRequest) {
       db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
     }
   } catch (e) {
-    console.error('Translation error:', e)
-    log('error', 'ai', 'Vertaling mislukt', { error: String(e), from }, conv.id)
+    log('error', 'ai', 'Vertaling mislukt', { error: e instanceof Error ? e.message : String(e), from }, conv.id)
   }
 
   db.prepare(`

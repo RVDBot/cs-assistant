@@ -61,6 +61,9 @@ export function getAllKnowledgeFiles(): KnowledgeFile[] {
 }
 
 export function saveKnowledgeFile(slug: string, content: string): void {
+  if (!KNOWLEDGE_TOPICS.some(t => t.slug === slug)) {
+    throw new Error('Invalid slug')
+  }
   ensureDir()
   const filePath = path.join(KNOWLEDGE_DIR, `${slug}.md`)
   fs.writeFileSync(filePath, content, 'utf-8')

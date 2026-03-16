@@ -23,8 +23,7 @@ export async function POST(req: NextRequest) {
     twilioSid = await sendWhatsAppMessage(conv.customer_phone, content)
     log('info', 'twilio', 'Handmatig bericht verstuurd via Twilio', { sid: twilioSid, to: conv.customer_phone }, conversation_id)
   } catch (e) {
-    console.error('Twilio send error:', e)
-    log('error', 'twilio', 'Handmatig versturen via Twilio mislukt', { error: String(e) }, conversation_id)
+    log('error', 'twilio', 'Handmatig versturen via Twilio mislukt', { error: e instanceof Error ? e.message : String(e) }, conversation_id)
   }
   log('info', 'bericht', 'Handmatig bericht verstuurd', { demo: !twilioSid }, conversation_id)
 

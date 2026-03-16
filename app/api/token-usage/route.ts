@@ -15,6 +15,10 @@ export async function GET(req: NextRequest) {
   const conversationId = req.nextUrl.searchParams.get('conversation_id')
 
   if (conversationId) {
+    const idNum = Number(conversationId)
+    if (!Number.isInteger(idNum) || idNum < 1) {
+      return NextResponse.json({ error: 'Invalid conversation_id' }, { status: 400 })
+    }
     // Per-conversation stats
     const rows = db.prepare(`
       SELECT call_type,

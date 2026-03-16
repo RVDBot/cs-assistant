@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { improveAnswer } from '@/lib/claude'
 import { validateExternalUrl } from '@/lib/security'
+import { log } from '@/lib/logger'
 
 function extractUrls(text: string): string[] {
   return text.match(/https?:\/\/[^\s]+/g) || []
@@ -70,8 +71,7 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json(result)
   } catch (e) {
-    // M2 fix: don't leak internal error details
-    console.error('AI improve error:', e)
+    log('error', 'ai', 'Antwoord verbeteren mislukt', { error: e instanceof Error ? e.message : String(e) }, Number(conversation_id))
     return NextResponse.json({ error: 'Er ging iets mis bij het verbeteren.' }, { status: 500 })
   }
 }

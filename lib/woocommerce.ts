@@ -1,34 +1,14 @@
 import { getDb } from './db'
-import { log } from './logger'
 
 function getCredentials() {
   const db = getDb()
   const get = (key: string) => (db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value || ''
 
-  const dbUrl = get('wc_store_url')
-  const dbKey = get('wc_consumer_key')
-  const dbSecret = get('wc_consumer_secret')
-  const envUrl = process.env.WC_STORE_URL || ''
-  const envKey = process.env.WC_CONSUMER_KEY || ''
-  const envSecret = process.env.WC_CONSUMER_SECRET || ''
-
-  const storeUrl = (dbUrl || envUrl).replace(/\/$/, '')
-  const consumerKey = dbKey || envKey
-  const consumerSecret = dbSecret || envSecret
-
-  log('info', 'systeem', 'WC credentials check', {
-    dbUrl: !!dbUrl,
-    dbKey: !!dbKey,
-    dbSecret: !!dbSecret,
-    envUrl: !!envUrl,
-    envKey: !!envKey,
-    envSecret: !!envSecret,
-    hasStoreUrl: !!storeUrl,
-    hasKey: !!consumerKey,
-    hasSecret: !!consumerSecret,
-  })
-
-  return { storeUrl, consumerKey, consumerSecret }
+  return {
+    storeUrl: (get('wc_store_url') || process.env.WC_STORE_URL || '').replace(/\/$/, ''),
+    consumerKey: get('wc_consumer_key') || process.env.WC_CONSUMER_KEY || '',
+    consumerSecret: get('wc_consumer_secret') || process.env.WC_CONSUMER_SECRET || '',
+  }
 }
 
 export interface WcAddress {

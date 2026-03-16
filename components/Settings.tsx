@@ -150,6 +150,9 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     anthropic_api_key: '',
     claude_model: 'claude-opus-4-6',
     app_password: '',
+    wc_store_url: '',
+    wc_consumer_key: '',
+    wc_consumer_secret: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -157,6 +160,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [showToken, setShowToken] = useState(false)
   const [showKey, setShowKey] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showWcSecret, setShowWcSecret] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [tokenStats, setTokenStats] = useState<{
     total_input: number
@@ -324,6 +328,36 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                   ))}
                 </select>
               </div>
+            </section>
+
+            <hr className="border-whatsapp-border" />
+
+            {/* WooCommerce */}
+            <section className="space-y-4">
+              <h3 className="text-whatsapp-text font-medium text-sm">WooCommerce</h3>
+              <Field
+                label="Winkel URL"
+                id="wc_store_url"
+                value={settings.wc_store_url}
+                onChange={v => setSettings(p => ({ ...p, wc_store_url: v }))}
+                placeholder="https://jouw-winkel.nl"
+              />
+              <Field
+                label="Consumer Key"
+                id="wc_consumer_key"
+                value={settings.wc_consumer_key}
+                onChange={v => setSettings(p => ({ ...p, wc_consumer_key: v }))}
+                placeholder="ck_..."
+              />
+              <Field
+                label="Consumer Secret"
+                id="wc_consumer_secret"
+                value={settings.wc_consumer_secret}
+                onChange={v => setSettings(p => ({ ...p, wc_consumer_secret: v }))}
+                show={showWcSecret}
+                onToggle={() => setShowWcSecret(!showWcSecret)}
+                placeholder="cs_..."
+              />
             </section>
 
             <hr className="border-whatsapp-border" />

@@ -110,11 +110,20 @@ function initSchema(db: Database.Database) {
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
       UNIQUE(conversation_id, wc_order_id)
     );
+
+    CREATE TABLE IF NOT EXISTS dismissed_orders (
+      conversation_id INTEGER NOT NULL,
+      wc_order_id     INTEGER NOT NULL,
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+      PRIMARY KEY (conversation_id, wc_order_id)
+    );
   `)
 
   // Safe migrations for existing databases
   try { db.exec(`ALTER TABLE messages ADD COLUMN reactions TEXT NOT NULL DEFAULT '[]'`) } catch {}
   try { db.exec(`ALTER TABLE customer_orders ADD COLUMN order_data TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE customer_orders ADD COLUMN match_sources TEXT NOT NULL DEFAULT '[]'`) } catch {}
 }
 
 export interface Conversation {

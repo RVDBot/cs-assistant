@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw } from 'lucide-react'
+import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw, Phone, Mail, Hash, SearchIcon } from 'lucide-react'
 
 interface Address {
   first_name: string
@@ -45,6 +45,7 @@ interface Order {
   currency: string
   adminUrl: string
   paymentMethod: string
+  matchSources?: string[]
   error?: boolean
 }
 
@@ -62,6 +63,31 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-500/20 text-red-400',
   refunded: 'bg-purple-500/20 text-purple-400',
   failed: 'bg-red-500/20 text-red-400',
+}
+
+const MATCH_ICONS: Record<string, { icon: typeof Phone; label: string }> = {
+  phone: { icon: Phone, label: 'Telefoonnummer' },
+  email: { icon: Mail, label: 'E-mailadres' },
+  order_number: { icon: Hash, label: 'Bestelnummer' },
+  manual: { icon: SearchIcon, label: 'Handmatig gezocht' },
+}
+
+function MatchBadges({ sources }: { sources?: string[] }) {
+  if (!sources || sources.length === 0) return null
+  return (
+    <span className="inline-flex items-center gap-0.5 ml-1.5">
+      {sources.map(s => {
+        const match = MATCH_ICONS[s]
+        if (!match) return null
+        const Icon = match.icon
+        return (
+          <span key={s} title={match.label} className="text-whatsapp-muted">
+            <Icon className="w-3 h-3" />
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 function formatDate(dateStr: string): string {
@@ -276,7 +302,9 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                     className="w-full flex items-center justify-between bg-whatsapp-input border border-whatsapp-border rounded-lg px-3 py-2.5 text-sm text-whatsapp-text hover:border-whatsapp-teal transition-colors"
                   >
                     <span className="flex items-center gap-2">
-                      {selectedOrder?.number || 'Selecteer bestelling'} — {selectedOrder ? formatDate(selectedOrder.dateCreated) : ''}
+                      {selectedOrder?.number || 'Selecteer bestelling'}
+                      <MatchBadges sources={selectedOrder?.matchSources} />
+                      <span className="text-whatsapp-muted">—</span> {selectedOrder ? formatDate(selectedOrder.dateCreated) : ''}
                       {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-whatsapp-muted transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
@@ -289,7 +317,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                           onClick={() => { setSelectedOrderId(o.id); setShowDropdown(false) }}
                           className={`w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-whatsapp-input transition-colors ${o.id === selectedOrderId ? 'bg-whatsapp-input text-whatsapp-teal' : 'text-whatsapp-text'}`}
                         >
-                          <span>{o.number} — {formatDate(o.dateCreated)}</span>
+                          <span className="flex items-center">{o.number}<MatchBadges sources={o.matchSources} /> <span className="ml-1">— {formatDate(o.dateCreated)}</span></span>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] || 'bg-whatsapp-input text-whatsapp-muted'}`}>
                             {o.statusLabel}
                           </span>
@@ -305,6 +333,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                 <div className="flex items-center justify-between">
                   <span className="text-whatsapp-text font-medium flex items-center gap-2">
                     {selectedOrder.number}
+                    <MatchBadges sources={selectedOrder.matchSources} />
                     {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selectedOrder.status] || 'bg-whatsapp-input text-whatsapp-muted'}`}>

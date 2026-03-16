@@ -187,16 +187,52 @@ export async function getOrderById(orderId: number): Promise<WcOrder | null> {
 }
 
 export async function searchByPhone(phone: string): Promise<WcOrder[]> {
-  // Clean phone: remove whatsapp: prefix, try with and without country code
+  // Clean phone: remove whatsapp: prefix and spaces
   const cleaned = phone.replace(/^whatsapp:/i, '').replace(/\s+/g, '')
-  const orders = await searchOrders(cleaned)
 
-  // If no results with full number, try without +
-  if (orders.length === 0 && cleaned.startsWith('+')) {
-    return searchOrders(cleaned.slice(1))
+  // Build phone variants to try: +31612345678, 31612345678, 0612345678, 06 12345678
+  const variants: string[] = [cleaned]
+  if (cleaned.startsWith('+')) {
+    variants.push(cleaned.slice(1)) // without +
+  }
+  // Convert international to local Dutch format: +316... -> 06...
+  const nlMatch = cleaned.match(/^\+?31(\d+)$/)
+  if (nlMatch) {
+    variants.push('0' + nlMatch[1]) // 0612345678
   }
 
-  return orders
+  // WC search param doesn't reliably match phone — try multiple approaches
+  for (const variant of variants) {
+    // Try search (works in some WC versions)
+    let orders = await searchOrders(variant)
+    if (orders.length > 0) return orders
+
+    // Try filtering by billing phone directly via WC REST API params
+    orders = await wcFetch('orders', {
+      per_page: '50',
+      orderby: 'date',
+      order: 'desc',
+      search: variant,
+    }) as WcOrder[]
+
+    // Also try fetching all recent orders and filtering client-side by phone
+    if (orders.length === 0) {
+      const recentOrders = await wcFetch('orders', {
+        per_page: '100',
+        orderby: 'date',
+        order: 'desc',
+      }) as WcOrder[]
+
+      orders = recentOrders.filter(o => {
+        const billingPhone = (o.billing.phone || '').replace(/[\s\-()]/g, '')
+        return variants.some(v => billingPhone.includes(v) || v.includes(billingPhone))
+      })
+    }
+
+    if (orders.length > 0) return orders
+  }
+
+  return []
 }
 
 export async function searchByEmail(email: string): Promise<WcOrder[]> {

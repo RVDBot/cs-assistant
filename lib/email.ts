@@ -224,31 +224,49 @@ async function fetchNewEmails(account: EmailAccount) {
     console.log(`[email-poll] ${account.name}: Lock verkregen, berichten ophalen...`)
 
     try {
-      // Fetch all unseen messages into an array first, then release the connection
-      const fetchedMessages: Array<{ uid: number; envelope: Record<string, unknown>; source: Buffer }> = []
-      const messages = client.fetch({ seen: false }, {
-        envelope: true,
-        source: true,
-        uid: true,
-      })
-
-      for await (const msg of messages) {
-        console.log(`[email-poll] ${account.name}: Bericht uid=${msg.uid} opgehaald`)
-        // Mark as seen immediately
-        await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
-        fetchedMessages.push({
-          uid: msg.uid,
-          envelope: (msg as unknown as { envelope: Record<string, unknown> }).envelope,
-          source: (msg as unknown as { source: Buffer }).source,
-        })
+      // Step 1: Quick search for unseen UIDs only (no source download)
+      const unseenUids: number[] = []
+      for await (const msg of client.fetch({ seen: false }, { uid: true })) {
+        unseenUids.push(msg.uid)
       }
-      console.log(`[email-poll] ${account.name}: ${fetchedMessages.length} berichten opgehaald`)
+      console.log(`[email-poll] ${account.name}: ${unseenUids.length} ongelezen berichten gevonden`)
+
+      if (unseenUids.length === 0) {
+        lock.release()
+        await client.logout()
+        return
+      }
+
+      // Step 2: Mark ALL as seen immediately to prevent reprocessing
+      if (unseenUids.length > 0) {
+        await client.messageFlagsAdd(unseenUids.map(uid => ({ uid })), ['\\Seen'], { uid: true })
+        console.log(`[email-poll] ${account.name}: Alle berichten als gelezen gemarkeerd`)
+      }
+
+      // Step 3: Fetch full source for each message individually (with per-message timeout)
+      const fetchedMessages: Array<{ uid: number; envelope: Record<string, unknown>; source: Buffer }> = []
+      for (const uid of unseenUids) {
+        try {
+          const fetched = await Promise.race([
+            client.fetchOne(uid, { envelope: true, source: true }, { uid: true }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Timeout bij ophalen uid=${uid}`)), 30000)),
+          ])
+          console.log(`[email-poll] ${account.name}: uid=${uid} opgehaald (${((fetched as unknown as { source: Buffer }).source?.length || 0) / 1024 | 0}KB)`)
+          fetchedMessages.push({
+            uid,
+            envelope: (fetched as unknown as { envelope: Record<string, unknown> }).envelope,
+            source: (fetched as unknown as { source: Buffer }).source,
+          })
+        } catch (e) {
+          console.error(`[email-poll] ${account.name}: Overgeslagen uid=${uid}:`, e instanceof Error ? e.message : String(e))
+        }
+      }
 
       lock.release()
       await client.logout()
-      console.log(`[email-poll] ${account.name}: IMAP verbinding gesloten`)
+      console.log(`[email-poll] ${account.name}: IMAP gesloten, ${fetchedMessages.length} berichten verwerken...`)
 
-      // Process messages AFTER closing the IMAP connection
+      // Step 4: Process messages AFTER closing the IMAP connection
       for (const msg of fetchedMessages) {
         try {
           await processIncomingEmail(msg, htmlToText, account)

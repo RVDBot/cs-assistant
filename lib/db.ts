@@ -134,6 +134,32 @@ function initSchema(db: Database.Database) {
   // Email channel migrations
   try { db.exec(`ALTER TABLE conversations ADD COLUMN customer_email TEXT`) } catch {}
   try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_email ON conversations(customer_email) WHERE customer_email IS NOT NULL`) } catch {}
+
+  // Make customer_phone nullable (required for email-only conversations)
+  // SQLite cannot ALTER COLUMN, so we rebuild the table
+  try {
+    const phoneCol = db.prepare(`PRAGMA table_info(conversations)`).all() as { name: string; notnull: number }[]
+    const phoneInfo = phoneCol.find(c => c.name === 'customer_phone')
+    if (phoneInfo && phoneInfo.notnull === 1) {
+      db.exec(`
+        CREATE TABLE conversations_new (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_phone    TEXT UNIQUE,
+          customer_email    TEXT,
+          customer_name     TEXT,
+          detected_language TEXT NOT NULL DEFAULT 'en',
+          created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_message      TEXT,
+          unread_count      INTEGER NOT NULL DEFAULT 0
+        );
+        INSERT INTO conversations_new SELECT id, customer_phone, customer_email, customer_name, detected_language, created_at, updated_at, last_message, unread_count FROM conversations;
+        DROP TABLE conversations;
+        ALTER TABLE conversations_new RENAME TO conversations;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_email ON conversations(customer_email) WHERE customer_email IS NOT NULL;
+      `)
+    }
+  } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN channel TEXT NOT NULL DEFAULT 'whatsapp'`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_subject TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}

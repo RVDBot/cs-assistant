@@ -229,12 +229,13 @@ async function fetchNewEmails(account: EmailAccount) {
 
       for await (const msg of messages) {
         try {
+          // Mark as seen FIRST to prevent reprocessing on timeout
+          await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
           await processIncomingEmail(
             msg as unknown as { uid: number; envelope?: Record<string, unknown>; source: Buffer },
             htmlToText,
             account
           )
-          await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
         } catch (e) {
           console.error(`[email-poll] Fout bij verwerken email uid=${msg.uid}:`, e instanceof Error ? e.message : String(e))
           log('error', 'systeem', 'Fout bij verwerken email', {
@@ -275,6 +276,16 @@ async function processIncomingEmail(
     : null
 
   console.log(`[email-poll] Verwerken uid=${msg.uid} van ${fromAddr}: ${subject}`)
+
+  // Skip duplicates (already processed in a previous poll)
+  if (messageId) {
+    const db = getDb()
+    const existing = db.prepare('SELECT id FROM messages WHERE email_message_id = ? LIMIT 1').get(messageId) as { id: number } | undefined
+    if (existing) {
+      console.log(`[email-poll] Overgeslagen: duplicaat message-id ${messageId}`)
+      return
+    }
+  }
 
   // Skip emails from ourselves (any of our accounts)
   const allAccounts = getEmailAccounts()

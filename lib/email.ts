@@ -180,7 +180,12 @@ async function pollEmails() {
     console.log(`[email-poll] Polling ${accounts.length} account(s)...`)
     for (const account of accounts) {
       try {
-        await fetchNewEmails(account)
+        // Timeout after 2 minutes to prevent hanging
+        await Promise.race([
+          fetchNewEmails(account),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout na 2 minuten')), 120000)),
+        ])
+        console.log(`[email-poll] ${account.name}: OK`)
       } catch (e) {
         console.error(`[email-poll] Fout bij ${account.name}:`, e instanceof Error ? e.message : String(e))
         log('error', 'systeem', `Email polling fout (${account.name})`, { error: e instanceof Error ? e.message : String(e), accountId: account.id })
@@ -191,6 +196,7 @@ async function pollEmails() {
     log('error', 'systeem', 'Email polling fout', { error: e instanceof Error ? e.message : String(e) })
   }
 
+  // Always reschedule
   if (pollingActive) {
     pollingTimer = setTimeout(pollEmails, 60000)
   }
@@ -230,6 +236,7 @@ async function fetchNewEmails(account: EmailAccount) {
           )
           await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
         } catch (e) {
+          console.error(`[email-poll] Fout bij verwerken email uid=${msg.uid}:`, e instanceof Error ? e.message : String(e))
           log('error', 'systeem', 'Fout bij verwerken email', {
             error: e instanceof Error ? e.message : String(e),
             uid: msg.uid,

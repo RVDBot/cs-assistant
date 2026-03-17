@@ -94,20 +94,23 @@ function pickBg(h: number, avoid: string[]): string {
 }
 
 interface Props {
-  phone: string
+  /** @deprecated Use identifier instead */
+  phone?: string
+  identifier?: string
   size?: number
   className?: string
 }
 
-export default function MonsterAvatar({ phone, size = 48, className }: Props) {
-  const h = hash(phone || 'x')
-  const h2 = hash(phone + 'a')
-  const h3 = hash(phone + 'b')
-  const h4 = hash(phone + 'c')
-  const h5 = hash(phone + 'd')
-  const h6 = hash(phone + 'e')
-  const h7 = hash(phone + 'f')
-  const h8 = hash(phone + 'g')
+export default function MonsterAvatar({ phone, identifier, size = 48, className }: Props) {
+  const id = identifier || phone || 'x'
+  const h = hash(id)
+  const h2 = hash(id + 'a')
+  const h3 = hash(id + 'b')
+  const h4 = hash(id + 'c')
+  const h5 = hash(id + 'd')
+  const h6 = hash(id + 'e')
+  const h7 = hash(id + 'f')
+  const h8 = hash(id + 'g')
 
   const bodyColor = pick(BODY_COLORS, h)
   const hairColor = pick(HAIR_COLORS, h2)

@@ -31,13 +31,15 @@ function initSchema(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS conversations (
       id                INTEGER PRIMARY KEY AUTOINCREMENT,
-      customer_phone    TEXT NOT NULL UNIQUE,
+      customer_phone    TEXT UNIQUE,
+      customer_email    TEXT UNIQUE,
       customer_name     TEXT,
       detected_language TEXT NOT NULL DEFAULT 'en',
       created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       last_message      TEXT,
-      unread_count      INTEGER NOT NULL DEFAULT 0
+      unread_count      INTEGER NOT NULL DEFAULT 0,
+      CHECK (customer_phone IS NOT NULL OR customer_email IS NOT NULL)
     );
 
     CREATE TABLE IF NOT EXISTS messages (
@@ -52,6 +54,10 @@ function initSchema(db: Database.Database) {
       status                TEXT NOT NULL DEFAULT 'received',
       twilio_sid            TEXT,
       reactions             TEXT NOT NULL DEFAULT '[]',
+      channel               TEXT NOT NULL DEFAULT 'whatsapp',
+      email_subject         TEXT,
+      email_message_id      TEXT,
+      email_in_reply_to     TEXT,
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
 
@@ -124,11 +130,19 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE messages ADD COLUMN reactions TEXT NOT NULL DEFAULT '[]'`) } catch {}
   try { db.exec(`ALTER TABLE customer_orders ADD COLUMN order_data TEXT`) } catch {}
   try { db.exec(`ALTER TABLE customer_orders ADD COLUMN match_sources TEXT NOT NULL DEFAULT '[]'`) } catch {}
+
+  // Email channel migrations
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN customer_email TEXT UNIQUE`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN channel TEXT NOT NULL DEFAULT 'whatsapp'`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_subject TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_in_reply_to TEXT`) } catch {}
 }
 
 export interface Conversation {
   id: number
-  customer_phone: string
+  customer_phone: string | null
+  customer_email: string | null
   customer_name: string | null
   detected_language: string
   created_at: string
@@ -148,6 +162,10 @@ export interface Message {
   sent_at: string
   status: string
   twilio_sid: string | null
+  channel: 'whatsapp' | 'email'
+  email_subject: string | null
+  email_message_id: string | null
+  email_in_reply_to: string | null
 }
 
 export interface ContextFile {

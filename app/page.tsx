@@ -12,7 +12,8 @@ import Logs from '@/components/Logs'
 
 interface Conversation {
   id: number
-  customer_phone: string
+  customer_phone: string | null
+  customer_email: string | null
   customer_name: string | null
   detected_language: string
   unread_count: number
@@ -26,6 +27,7 @@ export default function Home() {
   const [showKnowledge, setShowKnowledge] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [sendChannel, setSendChannel] = useState<'whatsapp' | 'email'>('whatsapp')
 
   // Mobile navigation: 'list' or 'chat'
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
@@ -71,6 +73,7 @@ export default function Home() {
           conversationId={selectedConvId}
           onConversationLoad={handleConversationLoad}
           onMessageSent={handleMessageSent}
+          onChannelChange={setSendChannel}
           onBack={handleBack}
           onOpenSettings={() => setShowSettings(true)}
           onOpenContext={() => setShowContext(true)}
@@ -83,6 +86,7 @@ export default function Home() {
         <AIPanel
           conversation={conversation}
           onMessageSent={handleMessageSent}
+          sendChannel={sendChannel}
         />
       </div>
 
@@ -115,6 +119,7 @@ export default function Home() {
                 conversation={conversation}
                 onMessageSent={() => { handleMessageSent(); setShowMobileAI(false) }}
                 onClose={() => setShowMobileAI(false)}
+                sendChannel={sendChannel}
               />
             </div>
           </div>

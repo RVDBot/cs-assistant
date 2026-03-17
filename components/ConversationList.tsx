@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell } from 'lucide-react'
+import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell, Mail, MessageSquare } from 'lucide-react'
 import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 import { useNotifications } from '@/hooks/useNotifications'
 import MonsterAvatar from '@/components/MonsterAvatar'
 
 interface Conversation {
   id: number
-  customer_phone: string
+  customer_phone: string | null
+  customer_email: string | null
   customer_name: string | null
   detected_language: string
   updated_at: string
@@ -61,7 +62,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
         for (const conv of data) {
           const prev = prevUnreads.current.get(conv.id) || 0
           if (conv.unread_count > prev && conv.id !== selectedIdRef.current) {
-            const name = formatContactName(conv.customer_name, conv.customer_phone)
+            const name = formatContactName(conv.customer_name, conv.customer_phone || '', conv.customer_email)
             const body = conv.last_message || 'Nieuw bericht'
             notify(name, body, () => onSelect(conv.id))
           }
@@ -96,8 +97,9 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   const filtered = conversations.filter(c => {
     const q = search.toLowerCase()
     return (
-      formatContactName(c.customer_name, c.customer_phone).toLowerCase().includes(q) ||
-      (c.last_message || '').toLowerCase().includes(q)
+      formatContactName(c.customer_name, c.customer_phone || '', c.customer_email).toLowerCase().includes(q) ||
+      (c.last_message || '').toLowerCase().includes(q) ||
+      (c.customer_email || '').toLowerCase().includes(q)
     )
   })
 
@@ -212,17 +214,19 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
             onClick={() => onSelect(conv.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors border-b border-whatsapp-border/30 text-left ${selectedId === conv.id ? 'bg-whatsapp-input' : ''}`}
           >
-            <MonsterAvatar phone={conv.customer_phone} size={48} className="shrink-0" />
+            <MonsterAvatar identifier={conv.customer_phone || conv.customer_email || ''} size={48} className="shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-whatsapp-text font-medium text-sm truncate">
-                  {formatContactName(conv.customer_name, conv.customer_phone)}
+                  {formatContactName(conv.customer_name, conv.customer_phone || '', conv.customer_email)}
                 </span>
                 <span className="text-whatsapp-muted text-xs shrink-0 ml-2">{formatDate(conv.updated_at)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-whatsapp-muted text-xs truncate">{conv.last_message || 'Nieuw gesprek'}</span>
                 <div className="flex items-center gap-1 shrink-0">
+                  {conv.customer_phone && <MessageSquare className="w-3 h-3 text-whatsapp-muted" />}
+                  {conv.customer_email && <Mail className="w-3 h-3 text-whatsapp-muted" />}
                   <span className="text-[10px] text-whatsapp-muted bg-whatsapp-input px-1.5 py-0.5 rounded-full">
                     {getLanguageName(conv.detected_language)}
                   </span>

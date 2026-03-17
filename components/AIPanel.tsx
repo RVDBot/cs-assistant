@@ -6,7 +6,8 @@ import { getLanguageName } from '@/lib/utils'
 
 interface Conversation {
   id: number
-  customer_phone: string
+  customer_phone: string | null
+  customer_email: string | null
   customer_name: string | null
   detected_language: string
 }
@@ -42,9 +43,10 @@ interface Props {
   conversation: Conversation | null
   onMessageSent?: () => void
   onClose?: () => void
+  sendChannel?: 'whatsapp' | 'email'
 }
 
-export default function AIPanel({ conversation, onMessageSent, onClose }: Props) {
+export default function AIPanel({ conversation, onMessageSent, onClose, sendChannel }: Props) {
   // Per-conversation state cache: keeps answer/state when switching away and back
   const cache = useRef<Record<number, ConvState>>({})
   const convId = conversation?.id ?? null
@@ -195,6 +197,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
           conversation_id: conversation.id,
           answer_dutch: state.answer.dutch,
           answer_customer_lang: state.answer.customerLang,
+          channel: sendChannel,
         }),
       })
       const data = await res.json()
@@ -210,7 +213,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose }: Props)
     } finally {
       setSending(false)
     }
-  }, [conversation, state.answer, onMessageSent])
+  }, [conversation, state.answer, onMessageSent, sendChannel])
 
   async function copyToClipboard(text: string) {
     await navigator.clipboard.writeText(text)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
@@ -17,11 +17,14 @@ interface Message {
   sent_at: string
   status: string
   reactions: string
+  channel?: 'whatsapp' | 'email'
+  email_subject?: string | null
 }
 
 interface Conversation {
   id: number
-  customer_phone: string
+  customer_phone: string | null
+  customer_email: string | null
   customer_name: string | null
   detected_language: string
   unread_count: number
@@ -31,13 +34,14 @@ interface Props {
   conversationId: number | null
   onConversationLoad?: (conv: Conversation) => void
   onMessageSent?: () => void
+  onChannelChange?: (channel: 'whatsapp' | 'email') => void
   onBack?: () => void
   onOpenSettings?: () => void
   onOpenContext?: () => void
   onOpenKnowledge?: () => void
 }
 
-export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onBack, onOpenSettings, onOpenContext, onOpenKnowledge }: Props) {
+export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onChannelChange, onBack, onOpenSettings, onOpenContext, onOpenKnowledge }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -49,6 +53,10 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [showMenu, setShowMenu] = useState(false)
   const [showOrders, setShowOrders] = useState(false)
   const [orderCount, setOrderCount] = useState<number>(0)
+  const [sendChannel, setSendChannel] = useState<'whatsapp' | 'email'>('whatsapp')
+  const [showMerge, setShowMerge] = useState(false)
+  const [mergeList, setMergeList] = useState<Conversation[]>([])
+  const [merging, setMerging] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -80,12 +88,28 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     }
   }, [conversationId, onConversationLoad])
 
+  // Set default channel when conversation changes
+  useEffect(() => {
+    if (!conversation) return
+    let ch: 'whatsapp' | 'email'
+    if (conversation.customer_phone && conversation.customer_email) {
+      ch = 'whatsapp' // Rubens voorkeur
+    } else if (conversation.customer_email) {
+      ch = 'email'
+    } else {
+      ch = 'whatsapp'
+    }
+    setSendChannel(ch)
+    onChannelChange?.(ch)
+  }, [conversation?.id])
+
   useEffect(() => {
     if (!conversationId) return
     setLoading(true)
     setMessages([])
     setConversation(null)
     setOrderCount(0)
+    setShowMerge(false)
     load()
     // Fetch order count from DB (no WC API call)
     fetch(`/api/orders?conversation_id=${conversationId}&count=1`)
@@ -118,6 +142,34 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     setShowTranslation(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  async function openMerge() {
+    try {
+      const res = await fetch('/api/conversations')
+      const all: Conversation[] = await res.json()
+      setMergeList(all.filter(c => c.id !== conversationId))
+      setShowMerge(true)
+    } catch {}
+  }
+
+  async function doMerge(mergeId: number) {
+    if (!conversationId || merging) return
+    if (!confirm('Weet je zeker dat je deze conversaties wilt samenvoegen? Dit kan niet ongedaan worden.')) return
+    setMerging(true)
+    try {
+      const res = await fetch('/api/conversations/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keep_id: conversationId, merge_id: mergeId }),
+      })
+      if (res.ok) {
+        setShowMerge(false)
+        onMessageSent?.()
+        await load()
+      }
+    } catch {}
+    setMerging(false)
+  }
+
   async function sendManual() {
     if (!conversation || !manualText.trim() || sending) return
     setSending(true)
@@ -125,7 +177,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversation.id, content: manualText.trim() }),
+        body: JSON.stringify({ conversation_id: conversation.id, content: manualText.trim(), channel: sendChannel }),
       })
       if (res.ok) {
         setManualText('')
@@ -179,7 +231,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
-        <MonsterAvatar phone={conversation?.customer_phone || ''} size={40} className="shrink-0" />
+        <MonsterAvatar identifier={conversation?.customer_phone || conversation?.customer_email || ''} size={40} className="shrink-0" />
         <div className="flex-1 min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2">
@@ -199,19 +251,30 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               className="text-left group"
             >
               <div className="text-whatsapp-text font-medium text-sm flex items-center gap-1">
-                {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '')}
+                {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
                 <User className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
               </div>
             </button>
           )}
-          <div className="text-whatsapp-muted text-xs flex items-center gap-1.5">
-            <span>{formatPhone(conversation?.customer_phone || '')} &middot; {getLanguageName(conversation?.detected_language || 'en')}</span>
+          <div className="text-whatsapp-muted text-xs flex items-center gap-1.5 flex-wrap">
+            {conversation?.customer_phone && <span>{formatPhone(conversation.customer_phone)}</span>}
+            {conversation?.customer_phone && conversation?.customer_email && <span>&middot;</span>}
+            {conversation?.customer_email && <span>{conversation.customer_email}</span>}
+            <span>&middot;</span>
+            <span>{getLanguageName(conversation?.detected_language || 'en')}</span>
             <button
               onClick={() => setShowOrders(true)}
               className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
             >
               <Package className="w-3 h-3" />
               <span className="hidden sm:inline">Bestellingen{orderCount > 0 ? ` (${orderCount})` : ''}</span>
+            </button>
+            <button
+              onClick={openMerge}
+              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+            >
+              <Merge className="w-3 h-3" />
+              <span className="hidden sm:inline">Samenvoegen</span>
             </button>
           </div>
         </div>
@@ -306,6 +369,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   )}
 
                   <div className={`flex items-center gap-1 mt-1 ${isInbound ? 'justify-start' : 'justify-end'}`}>
+                    {msg.channel === 'email' ? (
+                      <Mail className="w-2.5 h-2.5 text-whatsapp-muted" />
+                    ) : (
+                      <MessageSquare className="w-2.5 h-2.5 text-whatsapp-muted" />
+                    )}
                     <span className="text-whatsapp-muted text-[10px]">{formatTime(msg.sent_at)}</span>
                     {!isInbound && (
                       msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-400" /> :
@@ -333,6 +401,16 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
       {/* Manual send input */}
       <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
+        {conversation?.customer_phone && conversation?.customer_email && (
+          <select
+            value={sendChannel}
+            onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
+            className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
+          >
+            <option value="whatsapp">WhatsApp</option>
+            <option value="email">Email</option>
+          </select>
+        )}
         <textarea
           ref={inputRef}
           value={manualText}
@@ -356,6 +434,44 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
+
+      {/* Merge modal */}
+      {showMerge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-[400px] max-h-[60vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-whatsapp-border">
+              <h3 className="text-whatsapp-text font-semibold text-sm">Samenvoegen met...</h3>
+              <button onClick={() => setShowMerge(false)} className="text-whatsapp-muted hover:text-whatsapp-text">
+                <span className="text-lg">&times;</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {mergeList.length === 0 && (
+                <div className="text-whatsapp-muted text-sm text-center py-8">Geen andere conversaties</div>
+              )}
+              {mergeList.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => doMerge(c.id)}
+                  disabled={merging}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors border-b border-whatsapp-border/30 text-left disabled:opacity-50"
+                >
+                  <MonsterAvatar identifier={c.customer_phone || c.customer_email || ''} size={36} className="shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-whatsapp-text text-sm truncate">
+                      {formatContactName(c.customer_name, c.customer_phone || '', c.customer_email)}
+                    </div>
+                    <div className="text-whatsapp-muted text-xs flex items-center gap-1">
+                      {c.customer_phone && <MessageSquare className="w-3 h-3" />}
+                      {c.customer_email && <Mail className="w-3 h-3" />}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Orders modal */}
       {showOrders && conversation && (

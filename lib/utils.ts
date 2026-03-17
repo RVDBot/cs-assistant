@@ -50,7 +50,7 @@ export function formatPhone(phone: string): string {
   return phone.replace(/^whatsapp:/i, '')
 }
 
-export function formatContactName(name: string | null, phone: string): string {
-  const clean = formatPhone(phone)
+export function formatContactName(name: string | null, phone: string, email?: string | null): string {
+  const clean = phone ? formatPhone(phone) : (email || '')
   return name ? `${name} (${clean})` : clean
 }

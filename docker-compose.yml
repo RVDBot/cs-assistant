@@ -18,6 +18,14 @@ services:
       - WC_CONSUMER_KEY=${WC_CONSUMER_KEY}
       - WC_CONSUMER_SECRET=${WC_CONSUMER_SECRET}
     restart: unless-stopped
+    depends_on:
+      - protonmail-bridge
+
+  protonmail-bridge:
+    image: shenxn/protonmail-bridge:latest
+    volumes:
+      - protonmail_data:/root
+    restart: unless-stopped
 
   caddy:
     image: caddy:alpine
@@ -37,3 +45,4 @@ volumes:
   cs_knowledge:
   caddy_data:
   caddy_config:
+  protonmail_data:

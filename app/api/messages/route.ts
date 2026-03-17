@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { sendWhatsAppMessage } from '@/lib/twilio'
-import { sendEmail } from '@/lib/email'
+import { sendEmail, getAccountForConversation } from '@/lib/email'
 import { log } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
   let twilioSid: string | null = null
   let emailMessageId: string | null = null
   let emailSubject: string | null = null
+  let emailAccountId: number | null = null
 
   if (sendChannel === 'email' && conv.customer_email) {
     // Get last email subject for threading
@@ -35,10 +36,13 @@ export async function POST(req: NextRequest) {
       ? (lastEmail.email_subject.startsWith('Re: ') ? lastEmail.email_subject : `Re: ${lastEmail.email_subject}`)
       : 'Reactie van SpeedRope Shop'
     const inReplyTo = lastEmail?.email_message_id || undefined
+    const account = getAccountForConversation(conversation_id)
 
     try {
-      emailMessageId = await sendEmail(conv.customer_email, emailSubject, content, inReplyTo)
-      log('info', 'bericht', 'Handmatig email verstuurd', { to: conv.customer_email }, conversation_id)
+      const result = await sendEmail(conv.customer_email, emailSubject, content, inReplyTo, account?.id)
+      emailMessageId = result.messageId
+      emailAccountId = result.accountId
+      log('info', 'bericht', 'Handmatig email verstuurd', { to: conv.customer_email, account: account?.name }, conversation_id)
     } catch (e) {
       log('error', 'bericht', 'Handmatig email versturen mislukt', { error: e instanceof Error ? e.message : String(e) }, conversation_id)
     }
@@ -55,9 +59,9 @@ export async function POST(req: NextRequest) {
   log('info', 'bericht', 'Handmatig bericht verstuurd', { demo: !sent, channel: sendChannel }, conversation_id)
 
   const result = db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_customer_lang, language, twilio_sid, status, channel, email_subject, email_message_id)
-    VALUES (?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(conversation_id, content, content, conv.detected_language, twilioSid, sent ? 'sent' : 'demo', sendChannel, emailSubject, emailMessageId)
+    INSERT INTO messages (conversation_id, direction, content, content_customer_lang, language, twilio_sid, status, channel, email_subject, email_message_id, email_account_id)
+    VALUES (?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(conversation_id, content, content, conv.detected_language, twilioSid, sent ? 'sent' : 'demo', sendChannel, emailSubject, emailMessageId, emailAccountId)
 
   db.prepare(`
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?

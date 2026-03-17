@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight } from 'lucide-react'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -163,16 +163,6 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     wc_store_url: '',
     wc_consumer_key: '',
     wc_consumer_secret: '',
-    email_enabled: 'false',
-    email_imap_host: 'imap.gmail.com',
-    email_imap_port: '993',
-    email_imap_user: '',
-    email_imap_password: '',
-    email_smtp_host: 'smtp.gmail.com',
-    email_smtp_port: '587',
-    email_smtp_user: '',
-    email_smtp_password: '',
-    email_from_name: 'SpeedRope Shop',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -181,10 +171,6 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [showKey, setShowKey] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showWcSecret, setShowWcSecret] = useState(false)
-  const [showImapPass, setShowImapPass] = useState(false)
-  const [showSmtpPass, setShowSmtpPass] = useState(false)
-  const [emailTesting, setEmailTesting] = useState(false)
-  const [emailTestResult, setEmailTestResult] = useState<{ imap: boolean; smtp: boolean; errors: string[] } | null>(null)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [tokenStats, setTokenStats] = useState<{
     total_input: number
@@ -192,7 +178,49 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     total_calls: number
     by_type: { call_type: string; label: string; input_tokens: number; output_tokens: number; calls: number }[]
   } | null>(null)
+
+  // Email accounts state
+  interface EmailAccountForm {
+    id?: number
+    name: string
+    enabled: number
+    imap_host: string
+    imap_port: number
+    imap_user: string
+    imap_password: string
+    smtp_host: string
+    smtp_port: number
+    smtp_user: string
+    smtp_password: string
+    from_name: string
+  }
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccountForm[]>([])
+  const [editingAccount, setEditingAccount] = useState<EmailAccountForm | null>(null)
+  const [showImapPass, setShowImapPass] = useState(false)
+  const [showSmtpPass, setShowSmtpPass] = useState(false)
+  const [emailTesting, setEmailTesting] = useState<number | null>(null)
+  const [emailTestResult, setEmailTestResult] = useState<{ accountId: number; imap: boolean; smtp: boolean; errors: string[] } | null>(null)
+
   const router = useRouter()
+
+  const emptyAccount: EmailAccountForm = {
+    name: '',
+    enabled: 1,
+    imap_host: 'imap.gmail.com',
+    imap_port: 993,
+    imap_user: '',
+    imap_password: '',
+    smtp_host: 'smtp.gmail.com',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_password: '',
+    from_name: 'SpeedRope Shop',
+  }
+
+  async function fetchEmailAccounts() {
+    const res = await fetch('/api/email/accounts')
+    setEmailAccounts(await res.json())
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -201,9 +229,11 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     Promise.all([
       fetch('/api/settings').then(r => r.json()),
       fetch('/api/token-usage').then(r => r.json()),
-    ]).then(([settingsData, tokenData]) => {
+      fetch('/api/email/accounts').then(r => r.json()),
+    ]).then(([settingsData, tokenData, accountsData]) => {
       setSettings(prev => ({ ...prev, ...settingsData }))
       setTokenStats(tokenData)
+      setEmailAccounts(accountsData)
       setLoading(false)
     })
   }, [])
@@ -361,74 +391,205 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               {/* Email tab */}
               {contentTab === 'email' && (
                 <>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-whatsapp-text font-medium text-sm">Email Kanaal</h3>
-                    <button
-                      onClick={() => setSettings(p => ({ ...p, email_enabled: p.email_enabled === 'true' ? 'false' : 'true' }))}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${settings.email_enabled === 'true' ? 'bg-whatsapp-teal' : 'bg-whatsapp-border'}`}
-                    >
-                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.email_enabled === 'true' ? 'left-5' : 'left-0.5'}`} />
-                    </button>
-                  </div>
-
-                  <p className="text-whatsapp-muted text-[11px]">Inkomende emails ophalen via IMAP en beantwoorden via SMTP (bijv. Google Workspace).</p>
-
-                  <div className="space-y-3">
-                    <p className="text-whatsapp-muted text-xs font-medium">IMAP (inkomend)</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Host" id="email_imap_host" value={settings.email_imap_host} onChange={v => setSettings(p => ({ ...p, email_imap_host: v }))} placeholder="imap.gmail.com" />
-                      <Field label="Poort" id="email_imap_port" value={settings.email_imap_port} onChange={v => setSettings(p => ({ ...p, email_imap_port: v }))} placeholder="993" />
-                    </div>
-                    <Field label="Gebruiker" id="email_imap_user" value={settings.email_imap_user} onChange={v => setSettings(p => ({ ...p, email_imap_user: v }))} placeholder="help@speedropeshop.com" />
-                    <Field label="App Wachtwoord" id="email_imap_password" value={settings.email_imap_password} onChange={v => setSettings(p => ({ ...p, email_imap_password: v }))} show={showImapPass} onToggle={() => setShowImapPass(!showImapPass)} />
-                  </div>
-
-                  <div className="space-y-3">
-                    <p className="text-whatsapp-muted text-xs font-medium">SMTP (uitgaand)</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Host" id="email_smtp_host" value={settings.email_smtp_host} onChange={v => setSettings(p => ({ ...p, email_smtp_host: v }))} placeholder="smtp.gmail.com" />
-                      <Field label="Poort" id="email_smtp_port" value={settings.email_smtp_port} onChange={v => setSettings(p => ({ ...p, email_smtp_port: v }))} placeholder="587" />
-                    </div>
-                    <Field label="Gebruiker" id="email_smtp_user" value={settings.email_smtp_user} onChange={v => setSettings(p => ({ ...p, email_smtp_user: v }))} placeholder="help@speedropeshop.com" />
-                    <Field label="App Wachtwoord" id="email_smtp_password" value={settings.email_smtp_password} onChange={v => setSettings(p => ({ ...p, email_smtp_password: v }))} show={showSmtpPass} onToggle={() => setShowSmtpPass(!showSmtpPass)} />
-                  </div>
-
-                  <Field label="Afzendernaam" id="email_from_name" value={settings.email_from_name} onChange={v => setSettings(p => ({ ...p, email_from_name: v }))} placeholder="SpeedRope Shop" />
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={async () => {
-                        setEmailTesting(true)
-                        setEmailTestResult(null)
-                        try {
-                          const res = await fetch('/api/email/test', { method: 'POST' })
-                          setEmailTestResult(await res.json())
-                        } catch {
-                          setEmailTestResult({ imap: false, smtp: false, errors: ['Test mislukt'] })
-                        }
-                        setEmailTesting(false)
-                      }}
-                      disabled={emailTesting}
-                      className="flex items-center gap-2 text-sm bg-whatsapp-input text-whatsapp-text px-3 py-1.5 rounded-lg hover:bg-whatsapp-border transition-colors disabled:opacity-50"
-                    >
-                      {emailTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      Test verbinding
-                    </button>
-                    {emailTestResult && (
-                      <div className="text-xs space-y-0.5">
-                        <span className={emailTestResult.imap ? 'text-green-400' : 'text-red-400'}>
-                          IMAP: {emailTestResult.imap ? '✓' : '✗'}
-                        </span>
-                        {' · '}
-                        <span className={emailTestResult.smtp ? 'text-green-400' : 'text-red-400'}>
-                          SMTP: {emailTestResult.smtp ? '✓' : '✗'}
-                        </span>
-                        {emailTestResult.errors.length > 0 && (
-                          <div className="text-red-400">{emailTestResult.errors.join(', ')}</div>
-                        )}
+                  {editingAccount ? (
+                    /* Account edit/create form */
+                    <>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }} className="text-whatsapp-muted hover:text-whatsapp-text">
+                          <ArrowLeft className="w-4 h-4" />
+                        </button>
+                        <h3 className="text-whatsapp-text font-medium text-sm">
+                          {editingAccount.id ? 'Account bewerken' : 'Nieuw account'}
+                        </h3>
                       </div>
-                    )}
-                  </div>
+
+                      <Field label="Naam" id="acc_name" value={editingAccount.name} onChange={v => setEditingAccount(p => p && ({ ...p, name: v }))} placeholder="Bijv. Google Workspace of Proton Mail" />
+                      <Field label="Afzendernaam" id="acc_from_name" value={editingAccount.from_name} onChange={v => setEditingAccount(p => p && ({ ...p, from_name: v }))} placeholder="SpeedRope Shop" />
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-whatsapp-muted text-xs font-medium">Actief</span>
+                        <button
+                          onClick={() => setEditingAccount(p => p && ({ ...p, enabled: p.enabled ? 0 : 1 }))}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${editingAccount.enabled ? 'bg-whatsapp-teal' : 'bg-whatsapp-border'}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${editingAccount.enabled ? 'left-5' : 'left-0.5'}`} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <p className="text-whatsapp-muted text-xs font-medium">IMAP (inkomend)</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Host" id="acc_imap_host" value={editingAccount.imap_host} onChange={v => setEditingAccount(p => p && ({ ...p, imap_host: v }))} placeholder="imap.gmail.com" />
+                          <Field label="Poort" id="acc_imap_port" value={String(editingAccount.imap_port)} onChange={v => setEditingAccount(p => p && ({ ...p, imap_port: parseInt(v) || 993 }))} placeholder="993" />
+                        </div>
+                        <Field label="Gebruiker" id="acc_imap_user" value={editingAccount.imap_user} onChange={v => setEditingAccount(p => p && ({ ...p, imap_user: v }))} placeholder="help@speedropeshop.com" />
+                        <Field label="Wachtwoord" id="acc_imap_password" value={editingAccount.imap_password} onChange={v => setEditingAccount(p => p && ({ ...p, imap_password: v }))} show={showImapPass} onToggle={() => setShowImapPass(!showImapPass)} />
+                      </div>
+
+                      <div className="space-y-3">
+                        <p className="text-whatsapp-muted text-xs font-medium">SMTP (uitgaand)</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Host" id="acc_smtp_host" value={editingAccount.smtp_host} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_host: v }))} placeholder="smtp.gmail.com" />
+                          <Field label="Poort" id="acc_smtp_port" value={String(editingAccount.smtp_port)} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_port: parseInt(v) || 587 }))} placeholder="587" />
+                        </div>
+                        <Field label="Gebruiker" id="acc_smtp_user" value={editingAccount.smtp_user} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_user: v }))} placeholder="help@speedropeshop.com" />
+                        <Field label="Wachtwoord" id="acc_smtp_password" value={editingAccount.smtp_password} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_password: v }))} show={showSmtpPass} onToggle={() => setShowSmtpPass(!showSmtpPass)} />
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={async () => {
+                            const method = editingAccount.id ? 'PUT' : 'POST'
+                            const payload = editingAccount.id ? editingAccount : { ...editingAccount }
+                            await fetch('/api/email/accounts', {
+                              method,
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(payload),
+                            })
+                            await fetchEmailAccounts()
+                            setEditingAccount(null)
+                            setShowImapPass(false)
+                            setShowSmtpPass(false)
+                          }}
+                          className="flex items-center gap-2 bg-whatsapp-teal text-white text-sm px-4 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {editingAccount.id ? 'Bijwerken' : 'Toevoegen'}
+                        </button>
+                        <button
+                          onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }}
+                          className="text-sm text-whatsapp-muted hover:text-whatsapp-text px-4 py-2 rounded-lg hover:bg-whatsapp-input transition-colors"
+                        >
+                          Annuleren
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* Account list */
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-whatsapp-text font-medium text-sm">Email Accounts</h3>
+                        <button
+                          onClick={() => setEditingAccount({ ...emptyAccount })}
+                          className="flex items-center gap-1.5 text-xs text-whatsapp-teal hover:underline"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Account toevoegen
+                        </button>
+                      </div>
+                      <p className="text-whatsapp-muted text-[11px]">Koppel meerdere email accounts (bijv. Google Workspace en Proton Mail).</p>
+
+                      {emailAccounts.length === 0 ? (
+                        <div className="bg-whatsapp-input rounded-lg p-4 text-center">
+                          <p className="text-whatsapp-muted text-sm">Geen email accounts geconfigureerd</p>
+                          <button
+                            onClick={() => setEditingAccount({ ...emptyAccount })}
+                            className="mt-2 text-xs text-whatsapp-teal hover:underline"
+                          >
+                            Voeg je eerste account toe
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {emailAccounts.map(acc => (
+                            <div key={acc.id} className="bg-whatsapp-input rounded-lg p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-whatsapp-muted" />
+                                  <span className="text-whatsapp-text text-sm font-medium">{acc.name}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${acc.enabled ? 'bg-green-500/20 text-green-400' : 'bg-whatsapp-border text-whatsapp-muted'}`}>
+                                    {acc.enabled ? 'Actief' : 'Inactief'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingAccount({ ...acc })
+                                      setShowImapPass(false)
+                                      setShowSmtpPass(false)
+                                    }}
+                                    className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                                    title="Bewerken"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Account "${acc.name}" verwijderen?`)) return
+                                      await fetch('/api/email/accounts', {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ id: acc.id }),
+                                      })
+                                      await fetchEmailAccounts()
+                                      setEmailTestResult(null)
+                                    }}
+                                    className="p-1.5 text-whatsapp-muted hover:text-red-400 transition-colors"
+                                    title="Verwijderen"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-whatsapp-muted text-xs">{acc.imap_user}</p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={async () => {
+                                    setEmailTesting(acc.id!)
+                                    setEmailTestResult(null)
+                                    try {
+                                      const res = await fetch('/api/email/test', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ accountId: acc.id }),
+                                      })
+                                      const result = await res.json()
+                                      setEmailTestResult({ ...result, accountId: acc.id })
+                                    } catch {
+                                      setEmailTestResult({ accountId: acc.id!, imap: false, smtp: false, errors: ['Test mislukt'] })
+                                    }
+                                    setEmailTesting(null)
+                                  }}
+                                  disabled={emailTesting === acc.id}
+                                  className="flex items-center gap-1.5 text-xs bg-whatsapp-deeper text-whatsapp-text px-2.5 py-1 rounded hover:bg-whatsapp-border transition-colors disabled:opacity-50"
+                                >
+                                  {emailTesting === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                  Test
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    await fetch('/api/email/accounts', {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ id: acc.id, enabled: acc.enabled ? 0 : 1 }),
+                                    })
+                                    await fetchEmailAccounts()
+                                  }}
+                                  className="text-xs text-whatsapp-muted hover:text-whatsapp-text"
+                                >
+                                  {acc.enabled ? 'Deactiveren' : 'Activeren'}
+                                </button>
+                                {emailTestResult && emailTestResult.accountId === acc.id && (
+                                  <div className="text-xs">
+                                    <span className={emailTestResult.imap ? 'text-green-400' : 'text-red-400'}>
+                                      IMAP: {emailTestResult.imap ? '✓' : '✗'}
+                                    </span>
+                                    {' · '}
+                                    <span className={emailTestResult.smtp ? 'text-green-400' : 'text-red-400'}>
+                                      SMTP: {emailTestResult.smtp ? '✓' : '✗'}
+                                    </span>
+                                    {emailTestResult.errors.length > 0 && (
+                                      <span className="text-red-400 ml-1">{emailTestResult.errors.join(', ')}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </>
               )}
 

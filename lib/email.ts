@@ -1,51 +1,78 @@
-import { getDb } from './db'
+import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
 
-function getEmailSettings() {
+export function getEmailAccounts(): EmailAccount[] {
   const db = getDb()
-  const get = (key: string) =>
-    (db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value || ''
-
-  return {
-    enabled: get('email_enabled') === 'true',
-    imap: {
-      host: get('email_imap_host') || 'imap.gmail.com',
-      port: parseInt(get('email_imap_port') || '993', 10),
-      user: get('email_imap_user'),
-      password: get('email_imap_password'),
-    },
-    smtp: {
-      host: get('email_smtp_host') || 'smtp.gmail.com',
-      port: parseInt(get('email_smtp_port') || '587', 10),
-      user: get('email_smtp_user'),
-      password: get('email_smtp_password'),
-    },
-    fromName: get('email_from_name') || 'SpeedRope Shop',
-  }
+  return db.prepare('SELECT * FROM email_accounts ORDER BY created_at ASC').all() as EmailAccount[]
 }
 
-export async function sendEmail(to: string, subject: string, body: string, inReplyTo?: string): Promise<string> {
-  const settings = getEmailSettings()
-  if (!settings.smtp.user || !settings.smtp.password) {
-    throw new Error('SMTP credentials not configured')
+export function getEnabledEmailAccounts(): EmailAccount[] {
+  return getEmailAccounts().filter(a => a.enabled === 1)
+}
+
+export function getEmailAccountById(id: number): EmailAccount | undefined {
+  const db = getDb()
+  return db.prepare('SELECT * FROM email_accounts WHERE id = ?').get(id) as EmailAccount | undefined
+}
+
+/** Find the account that received the last email in this conversation, or fall back to first enabled account */
+export function getAccountForConversation(conversationId: number): EmailAccount | undefined {
+  const db = getDb()
+  // Check the last inbound email's account
+  const lastInbound = db.prepare(
+    `SELECT email_account_id FROM messages WHERE conversation_id = ? AND channel = 'email' AND direction = 'inbound' AND email_account_id IS NOT NULL ORDER BY sent_at DESC LIMIT 1`
+  ).get(conversationId) as { email_account_id: number } | undefined
+
+  if (lastInbound?.email_account_id) {
+    const acc = getEmailAccountById(lastInbound.email_account_id)
+    if (acc) return acc
   }
+
+  // Check last outbound email's account
+  const lastOutbound = db.prepare(
+    `SELECT email_account_id FROM messages WHERE conversation_id = ? AND channel = 'email' AND email_account_id IS NOT NULL ORDER BY sent_at DESC LIMIT 1`
+  ).get(conversationId) as { email_account_id: number } | undefined
+
+  if (lastOutbound?.email_account_id) {
+    const acc = getEmailAccountById(lastOutbound.email_account_id)
+    if (acc) return acc
+  }
+
+  // Fall back to first enabled account
+  const accounts = getEnabledEmailAccounts()
+  return accounts[0]
+}
+
+export async function sendEmail(to: string, subject: string, body: string, inReplyTo?: string, accountId?: number): Promise<{ messageId: string; accountId: number }> {
+  let account: EmailAccount | undefined
+
+  if (accountId) {
+    account = getEmailAccountById(accountId)
+  }
+  if (!account) {
+    const accounts = getEnabledEmailAccounts()
+    account = accounts[0]
+  }
+  if (!account) throw new Error('Geen email account geconfigureerd')
 
   const nodemailer = await import('nodemailer')
   const transport = nodemailer.createTransport({
-    host: settings.smtp.host,
-    port: settings.smtp.port,
-    secure: settings.smtp.port === 465,
+    host: account.smtp_host,
+    port: account.smtp_port,
+    secure: account.smtp_port === 465,
     auth: {
-      user: settings.smtp.user,
-      pass: settings.smtp.password,
+      user: account.smtp_user,
+      pass: account.smtp_password,
     },
+    tls: { rejectUnauthorized: false },
   })
 
-  const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@speedropeshop.com>`
+  const domain = account.smtp_user.split('@')[1] || 'speedropeshop.com'
+  const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${domain}>`
 
   const mailOptions: Record<string, unknown> = {
-    from: `"${settings.fromName}" <${settings.smtp.user}>`,
+    from: `"${account.from_name}" <${account.smtp_user}>`,
     to,
     subject,
     text: body,
@@ -58,53 +85,47 @@ export async function sendEmail(to: string, subject: string, body: string, inRep
   }
 
   await transport.sendMail(mailOptions)
-  return messageId
+  return { messageId, accountId: account.id }
 }
 
-export async function testEmailConnection(): Promise<{ imap: boolean; smtp: boolean; errors: string[] }> {
-  const settings = getEmailSettings()
+export async function testAccountConnection(accountId: number): Promise<{ imap: boolean; smtp: boolean; errors: string[] }> {
+  const account = getEmailAccountById(accountId)
+  if (!account) return { imap: false, smtp: false, errors: ['Account niet gevonden'] }
+
   const errors: string[] = []
   let imapOk = false
   let smtpOk = false
 
-  // Test IMAP
-  if (settings.imap.user && settings.imap.password) {
-    try {
-      const { ImapFlow } = await import('imapflow')
-      const client = new ImapFlow({
-        host: settings.imap.host,
-        port: settings.imap.port,
-        secure: true,
-        auth: { user: settings.imap.user, pass: settings.imap.password },
-        logger: false,
-      })
-      await client.connect()
-      await client.logout()
-      imapOk = true
-    } catch (e) {
-      errors.push(`IMAP: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  } else {
-    errors.push('IMAP: credentials niet ingevuld')
+  try {
+    const { ImapFlow } = await import('imapflow')
+    const client = new ImapFlow({
+      host: account.imap_host,
+      port: account.imap_port,
+      secure: account.imap_port === 993,
+      auth: { user: account.imap_user, pass: account.imap_password },
+      logger: false,
+      tls: { rejectUnauthorized: false },
+    })
+    await client.connect()
+    await client.logout()
+    imapOk = true
+  } catch (e) {
+    errors.push(`IMAP: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  // Test SMTP
-  if (settings.smtp.user && settings.smtp.password) {
-    try {
-      const nodemailer = await import('nodemailer')
-      const transport = nodemailer.createTransport({
-        host: settings.smtp.host,
-        port: settings.smtp.port,
-        secure: settings.smtp.port === 465,
-        auth: { user: settings.smtp.user, pass: settings.smtp.password },
-      })
-      await transport.verify()
-      smtpOk = true
-    } catch (e) {
-      errors.push(`SMTP: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  } else {
-    errors.push('SMTP: credentials niet ingevuld')
+  try {
+    const nodemailer = await import('nodemailer')
+    const transport = nodemailer.createTransport({
+      host: account.smtp_host,
+      port: account.smtp_port,
+      secure: account.smtp_port === 465,
+      auth: { user: account.smtp_user, pass: account.smtp_password },
+      tls: { rejectUnauthorized: false },
+    })
+    await transport.verify()
+    smtpOk = true
+  } catch (e) {
+    errors.push(`SMTP: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   return { imap: imapOk, smtp: smtpOk, errors }
@@ -131,9 +152,13 @@ async function pollEmails() {
   if (!pollingActive) return
 
   try {
-    const settings = getEmailSettings()
-    if (settings.enabled && settings.imap.user && settings.imap.password) {
-      await fetchNewEmails(settings)
+    const accounts = getEnabledEmailAccounts()
+    for (const account of accounts) {
+      try {
+        await fetchNewEmails(account)
+      } catch (e) {
+        log('error', 'systeem', `Email polling fout (${account.name})`, { error: e instanceof Error ? e.message : String(e), accountId: account.id })
+      }
     }
   } catch (e) {
     log('error', 'systeem', 'Email polling fout', { error: e instanceof Error ? e.message : String(e) })
@@ -144,16 +169,17 @@ async function pollEmails() {
   }
 }
 
-async function fetchNewEmails(settings: ReturnType<typeof getEmailSettings>) {
+async function fetchNewEmails(account: EmailAccount) {
   const { ImapFlow } = await import('imapflow')
   const { htmlToText } = await import('html-to-text')
 
   const client = new ImapFlow({
-    host: settings.imap.host,
-    port: settings.imap.port,
-    secure: true,
-    auth: { user: settings.imap.user, pass: settings.imap.password },
+    host: account.imap_host,
+    port: account.imap_port,
+    secure: account.imap_port === 993,
+    auth: { user: account.imap_user, pass: account.imap_password },
     logger: false,
+    tls: { rejectUnauthorized: false },
   })
 
   try {
@@ -169,13 +195,17 @@ async function fetchNewEmails(settings: ReturnType<typeof getEmailSettings>) {
 
       for await (const msg of messages) {
         try {
-          await processIncomingEmail(msg as unknown as { uid: number; envelope?: Record<string, unknown>; source: Buffer }, htmlToText, settings)
-          // Mark as seen
+          await processIncomingEmail(
+            msg as unknown as { uid: number; envelope?: Record<string, unknown>; source: Buffer },
+            htmlToText,
+            account
+          )
           await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
         } catch (e) {
           log('error', 'systeem', 'Fout bij verwerken email', {
             error: e instanceof Error ? e.message : String(e),
             uid: msg.uid,
+            account: account.name,
           })
         }
       }
@@ -185,7 +215,7 @@ async function fetchNewEmails(settings: ReturnType<typeof getEmailSettings>) {
 
     await client.logout()
   } catch (e) {
-    log('error', 'systeem', 'IMAP verbinding mislukt', { error: e instanceof Error ? e.message : String(e) })
+    log('error', 'systeem', `IMAP verbinding mislukt (${account.name})`, { error: e instanceof Error ? e.message : String(e) })
     try { await client.logout() } catch {}
   }
 }
@@ -193,7 +223,7 @@ async function fetchNewEmails(settings: ReturnType<typeof getEmailSettings>) {
 async function processIncomingEmail(
   msg: { uid: number; envelope?: Record<string, unknown>; source: Buffer },
   htmlToText: (html: string, options?: Record<string, unknown>) => string,
-  settings: ReturnType<typeof getEmailSettings>
+  account: EmailAccount
 ) {
   const envelope = msg.envelope || {} as Record<string, unknown>
   const fromList = (envelope.from || []) as Array<{ address?: string; name?: string }>
@@ -203,8 +233,10 @@ async function processIncomingEmail(
   const messageId = (envelope.messageId as string) || ''
   const inReplyTo = (envelope.inReplyTo as string) || ''
 
-  // Skip emails from ourselves
-  if (fromAddr === settings.smtp.user?.toLowerCase()) return
+  // Skip emails from ourselves (any of our accounts)
+  const allAccounts = getEmailAccounts()
+  const ourAddresses = new Set(allAccounts.flatMap(a => [a.imap_user.toLowerCase(), a.smtp_user.toLowerCase()]))
+  if (ourAddresses.has(fromAddr)) return
 
   // Parse body from raw source
   const { simpleParser } = await import('mailparser')
@@ -215,7 +247,6 @@ async function processIncomingEmail(
   }
   if (!body) body = '(leeg bericht)'
 
-  // Strip quoted reply text (common patterns)
   body = stripQuotedReply(body)
 
   const db = getDb()
@@ -223,7 +254,7 @@ async function processIncomingEmail(
   // Try to find existing conversation
   let convId: number | null = null
 
-  // 1. Check by In-Reply-To header → match against existing email_message_id
+  // 1. Check by In-Reply-To header
   if (inReplyTo) {
     const existing = db.prepare(
       'SELECT conversation_id FROM messages WHERE email_message_id = ? LIMIT 1'
@@ -247,9 +278,8 @@ async function processIncomingEmail(
     `).run(fromAddr, fromName || null, body.slice(0, 100))
     convId = result.lastInsertRowid as number
 
-    log('info', 'bericht', `Nieuwe email-conversatie aangemaakt`, { from: fromAddr, name: fromName }, convId)
+    log('info', 'bericht', `Nieuwe email-conversatie aangemaakt via ${account.name}`, { from: fromAddr, name: fromName }, convId)
   } else {
-    // Update existing conversation
     db.prepare(`
       UPDATE conversations SET
         updated_at = CURRENT_TIMESTAMP,
@@ -258,7 +288,6 @@ async function processIncomingEmail(
       WHERE id = ?
     `).run(body.slice(0, 100), convId)
 
-    // Update customer name if we didn't have one
     if (fromName) {
       db.prepare(`
         UPDATE conversations SET customer_name = ? WHERE id = ? AND customer_name IS NULL
@@ -272,27 +301,23 @@ async function processIncomingEmail(
   try {
     language = await detectLanguage(body, convId)
     dutchContent = await translateToDutch(body, language, convId)
-
-    // Update detected language on conversation
     db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, convId)
   } catch (e) {
     log('error', 'ai', 'Vertaling email mislukt', { error: e instanceof Error ? e.message : String(e), from: fromAddr }, convId)
   }
 
-  // Save message
+  // Save message with account reference
   db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to)
-    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?)
-  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null)
+    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id)
+    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?)
+  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id)
 
-  log('info', 'bericht', `Email ontvangen van ${fromAddr} (${language.toUpperCase()})`, { from: fromAddr, subject }, convId)
+  log('info', 'bericht', `Email ontvangen via ${account.name} van ${fromAddr} (${language.toUpperCase()})`, { from: fromAddr, subject, account: account.name }, convId)
 
-  // Try auto-merge with existing WhatsApp conversation via WooCommerce
   tryAutoMerge(fromAddr, convId)
 }
 
 function stripQuotedReply(text: string): string {
-  // Remove common reply patterns
   const lines = text.split('\n')
   const cutPatterns = [
     /^On .+ wrote:$/,
@@ -324,13 +349,11 @@ async function tryAutoMerge(email: string, emailConvId: number) {
 
     if (orders.length === 0) return
 
-    // Look for a phone number in orders that matches an existing WhatsApp conversation
     const db = getDb()
     for (const order of orders) {
       const phone = order.billing.phone
       if (!phone) continue
 
-      // Normalize phone for matching
       const phoneVariants = [
         phone.replace(/[\s\-()]/g, ''),
         `whatsapp:+${phone.replace(/[\s\-()+ ]/g, '')}`,
@@ -343,7 +366,6 @@ async function tryAutoMerge(email: string, emailConvId: number) {
         ).get(variant, emailConvId) as { id: number } | undefined
 
         if (whatsappConv) {
-          // Merge: move all messages from email conv to whatsapp conv, add email
           mergeConversations(whatsappConv.id, emailConvId)
           log('info', 'systeem', `Auto-merge: email-conversatie ${emailConvId} samengevoegd met WhatsApp-conversatie ${whatsappConv.id}`, { email, phone: variant })
           return
@@ -351,7 +373,6 @@ async function tryAutoMerge(email: string, emailConvId: number) {
       }
     }
   } catch (e) {
-    // Don't fail the email processing if merge fails
     log('error', 'systeem', 'Auto-merge mislukt', { error: e instanceof Error ? e.message : String(e), email })
   }
 }
@@ -364,13 +385,9 @@ export function mergeConversations(keepId: number, mergeId: number) {
 
   if (!keep || !merge) throw new Error('Conversatie niet gevonden')
 
-  // Move all messages from merge to keep
   db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId)
-
-  // Move customer_orders
   db.prepare('UPDATE customer_orders SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId)
 
-  // Fill in missing fields on keep
   if (!keep.customer_email && merge.customer_email) {
     db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(merge.customer_email, keepId)
   }
@@ -381,11 +398,6 @@ export function mergeConversations(keepId: number, mergeId: number) {
     db.prepare('UPDATE conversations SET customer_name = ? WHERE id = ?').run(merge.customer_name, keepId)
   }
 
-  // Update timestamps
-  db.prepare(`
-    UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?
-  `).run(keepId)
-
-  // Delete merged conversation
+  db.prepare('UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(keepId)
   db.prepare('DELETE FROM conversations WHERE id = ?').run(mergeId)
 }

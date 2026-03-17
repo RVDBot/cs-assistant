@@ -137,6 +137,73 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_subject TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_in_reply_to TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_account_id INTEGER`) } catch {}
+
+  // Email accounts table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS email_accounts (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL,
+      enabled     INTEGER NOT NULL DEFAULT 1,
+      imap_host   TEXT NOT NULL DEFAULT 'imap.gmail.com',
+      imap_port   INTEGER NOT NULL DEFAULT 993,
+      imap_user   TEXT NOT NULL,
+      imap_password TEXT NOT NULL,
+      smtp_host   TEXT NOT NULL DEFAULT 'smtp.gmail.com',
+      smtp_port   INTEGER NOT NULL DEFAULT 587,
+      smtp_user   TEXT NOT NULL,
+      smtp_password TEXT NOT NULL,
+      from_name   TEXT NOT NULL DEFAULT 'SpeedRope Shop',
+      created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // Migrate old single-account settings to email_accounts table
+  try {
+    const oldUser = (db.prepare("SELECT value FROM settings WHERE key = 'email_imap_user'").get() as { value: string } | undefined)?.value
+    if (oldUser) {
+      const get = (k: string) => (db.prepare('SELECT value FROM settings WHERE key = ?').get(k) as { value: string } | undefined)?.value || ''
+      const exists = db.prepare('SELECT id FROM email_accounts WHERE imap_user = ?').get(oldUser)
+      if (!exists) {
+        db.prepare(`
+          INSERT INTO email_accounts (name, enabled, imap_host, imap_port, imap_user, imap_password, smtp_host, smtp_port, smtp_user, smtp_password, from_name)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          get('email_from_name') || 'Google Workspace',
+          get('email_enabled') === 'true' ? 1 : 0,
+          get('email_imap_host') || 'imap.gmail.com',
+          parseInt(get('email_imap_port') || '993', 10),
+          oldUser,
+          get('email_imap_password'),
+          get('email_smtp_host') || 'smtp.gmail.com',
+          parseInt(get('email_smtp_port') || '587', 10),
+          get('email_smtp_user') || oldUser,
+          get('email_smtp_password') || get('email_imap_password'),
+          get('email_from_name') || 'SpeedRope Shop',
+        )
+      }
+      // Clean up old settings
+      for (const k of ['email_enabled', 'email_imap_host', 'email_imap_port', 'email_imap_user', 'email_imap_password', 'email_smtp_host', 'email_smtp_port', 'email_smtp_user', 'email_smtp_password', 'email_from_name']) {
+        db.prepare('DELETE FROM settings WHERE key = ?').run(k)
+      }
+    }
+  } catch {}
+}
+
+export interface EmailAccount {
+  id: number
+  name: string
+  enabled: number
+  imap_host: string
+  imap_port: number
+  imap_user: string
+  imap_password: string
+  smtp_host: string
+  smtp_port: number
+  smtp_user: string
+  smtp_password: string
+  from_name: string
+  created_at: string
 }
 
 export interface Conversation {
@@ -166,6 +233,7 @@ export interface Message {
   email_subject: string | null
   email_message_id: string | null
   email_in_reply_to: string | null
+  email_account_id: number | null
 }
 
 export interface ContextFile {

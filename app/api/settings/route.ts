@@ -13,19 +13,9 @@ const SETTING_KEYS = [
   'wc_store_url',
   'wc_consumer_key',
   'wc_consumer_secret',
-  'email_enabled',
-  'email_imap_host',
-  'email_imap_port',
-  'email_imap_user',
-  'email_imap_password',
-  'email_smtp_host',
-  'email_smtp_port',
-  'email_smtp_user',
-  'email_smtp_password',
-  'email_from_name',
 ]
 
-const SENSITIVE_KEYS = ['twilio_auth_token', 'anthropic_api_key', 'app_password', 'wc_consumer_secret', 'email_imap_password', 'email_smtp_password']
+const SENSITIVE_KEYS = ['twilio_auth_token', 'anthropic_api_key', 'app_password', 'wc_consumer_secret']
 
 export async function GET() {
   const db = getDb()

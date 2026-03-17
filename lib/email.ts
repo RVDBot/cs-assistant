@@ -154,14 +154,17 @@ async function pollEmails() {
 
   try {
     const accounts = getEnabledEmailAccounts()
+    console.log(`[email-poll] Polling ${accounts.length} account(s)...`)
     for (const account of accounts) {
       try {
         await fetchNewEmails(account)
       } catch (e) {
+        console.error(`[email-poll] Fout bij ${account.name}:`, e instanceof Error ? e.message : String(e))
         log('error', 'systeem', `Email polling fout (${account.name})`, { error: e instanceof Error ? e.message : String(e), accountId: account.id })
       }
     }
   } catch (e) {
+    console.error('[email-poll] Polling fout:', e instanceof Error ? e.message : String(e))
     log('error', 'systeem', 'Email polling fout', { error: e instanceof Error ? e.message : String(e) })
   }
 

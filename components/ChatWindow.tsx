@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
-import { formatTime, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
+import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
 
 interface Message {
   id: number
@@ -19,6 +19,9 @@ interface Message {
   reactions: string
   channel?: 'whatsapp' | 'email'
   email_subject?: string | null
+  email_html?: string | null
+  email_cc?: string | null
+  email_attachments?: string | null
 }
 
 interface Conversation {
@@ -28,6 +31,25 @@ interface Conversation {
   customer_name: string | null
   detected_language: string
   unread_count: number
+}
+
+function EmailCc({ cc }: { cc: Array<{ address: string; name: string }> }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="text-[11px] text-whatsapp-muted">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1 hover:text-whatsapp-text">
+        CC: {cc.length} ontvanger{cc.length > 1 ? 's' : ''}
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-0.5 pl-1">
+          {cc.map((c, i) => (
+            <div key={i}>{c.name ? `${c.name} <${c.address}>` : c.address}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface Props {
@@ -364,9 +386,51 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                     </div>
                   )}
 
-                  <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {isInbound ? msg.content : outboundText}
-                  </p>
+                  {/* Email header: subject, CC, attachments */}
+                  {isInbound && msg.channel === 'email' && (
+                    <div className="mb-2 space-y-1.5">
+                      {msg.email_subject && (
+                        <div className="text-xs font-semibold text-whatsapp-text/90 border-b border-white/10 pb-1">
+                          {msg.email_subject}
+                        </div>
+                      )}
+                      {msg.email_cc && (() => {
+                        try {
+                          const cc = JSON.parse(msg.email_cc) as Array<{ address: string; name: string }>
+                          if (cc.length === 0) return null
+                          return <EmailCc cc={cc} />
+                        } catch { return null }
+                      })()}
+                      {msg.email_attachments && (() => {
+                        try {
+                          const atts = JSON.parse(msg.email_attachments) as Array<{ filename: string; size: number; contentType: string; allowed: boolean }>
+                          if (atts.length === 0) return null
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <Paperclip className="w-3 h-3 text-whatsapp-muted shrink-0" />
+                              {atts.map((a, i) => (
+                                <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded ${a.allowed ? 'bg-black/20 text-whatsapp-muted' : 'bg-red-500/20 text-red-400'}`}>
+                                  {a.filename} ({formatFileSize(a.size)})
+                                </span>
+                              ))}
+                            </div>
+                          )
+                        } catch { return null }
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Message content: HTML for emails, plain text for others */}
+                  {isInbound && msg.channel === 'email' && msg.email_html ? (
+                    <div
+                      className="text-whatsapp-text text-sm leading-relaxed break-words email-content"
+                      dangerouslySetInnerHTML={{ __html: msg.email_html }}
+                    />
+                  ) : (
+                    <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {isInbound ? msg.content : outboundText}
+                    </p>
+                  )}
 
                   {/* Inbound: dutch translation always shown below message */}
                   {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (

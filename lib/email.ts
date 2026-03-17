@@ -1,6 +1,29 @@
 import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
+import sanitizeHtml from 'sanitize-html'
+
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'text/plain', 'text/csv',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/zip',
+])
+
+function sanitizeEmailHtml(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: (sanitizeHtml.defaults.allowedTags || []).concat(['img', 'span', 'div', 'br', 'hr', 'table', 'thead', 'tbody', 'tr', 'td', 'th']),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      '*': ['style', 'class'],
+      'a': ['href', 'target', 'rel'],
+      'img': ['alt', 'width', 'height'],
+    },
+    allowedSchemes: ['https', 'mailto'],
+    disallowedTagsMode: 'discard',
+  })
+}
 
 export function getEmailAccounts(): EmailAccount[] {
   const db = getDb()
@@ -238,6 +261,12 @@ async function processIncomingEmail(
   const messageId = (envelope.messageId as string) || ''
   const inReplyTo = (envelope.inReplyTo as string) || ''
 
+  // Extract CC addresses
+  const ccList = (envelope.cc || []) as Array<{ address?: string; name?: string }>
+  const emailCc = ccList.length > 0
+    ? JSON.stringify(ccList.map(c => ({ address: c.address || '', name: c.name || '' })))
+    : null
+
   // Skip emails from ourselves (any of our accounts)
   const allAccounts = getEmailAccounts()
   const ourAddresses = new Set(allAccounts.flatMap(a => [a.imap_user.toLowerCase(), a.smtp_user.toLowerCase()]))
@@ -246,6 +275,14 @@ async function processIncomingEmail(
   // Parse body from raw source
   const { simpleParser } = await import('mailparser')
   const parsed = await simpleParser(msg.source)
+
+  // Sanitize and store HTML
+  let emailHtml: string | null = null
+  if (parsed.html && typeof parsed.html === 'string') {
+    emailHtml = sanitizeEmailHtml(parsed.html)
+  }
+
+  // Extract plain text for storage and translation
   let body = parsed.text || ''
   if (!body && parsed.html) {
     body = htmlToText(parsed.html, { wordwrap: false })
@@ -253,6 +290,16 @@ async function processIncomingEmail(
   if (!body) body = '(leeg bericht)'
 
   body = stripQuotedReply(body)
+
+  // Extract attachment metadata
+  const attachments = (parsed.attachments || [])
+    .map(att => ({
+      filename: att.filename || 'unnamed',
+      size: att.size || 0,
+      contentType: att.contentType || 'application/octet-stream',
+      allowed: ALLOWED_ATTACHMENT_TYPES.has(att.contentType || ''),
+    }))
+  const emailAttachments = attachments.length > 0 ? JSON.stringify(attachments) : null
 
   const db = getDb()
 
@@ -313,9 +360,9 @@ async function processIncomingEmail(
 
   // Save message with account reference
   db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id)
-    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?)
-  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id)
+    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id, email_html, email_cc, email_attachments)
+    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?, ?, ?, ?)
+  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id, emailHtml, emailCc, emailAttachments)
 
   log('info', 'bericht', `Email ontvangen via ${account.name} van ${fromAddr} (${language.toUpperCase()})`, { from: fromAddr, subject, account: account.name }, convId)
 

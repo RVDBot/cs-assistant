@@ -170,6 +170,9 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_in_reply_to TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_account_id INTEGER`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_html TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_cc TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN email_attachments TEXT`) } catch {}
 
   // Email accounts table
   db.exec(`
@@ -266,6 +269,9 @@ export interface Message {
   email_message_id: string | null
   email_in_reply_to: string | null
   email_account_id: number | null
+  email_html: string | null
+  email_cc: string | null
+  email_attachments: string | null
 }
 
 export interface ContextFile {

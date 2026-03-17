@@ -57,3 +57,13 @@ body {
 }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Email HTML content styling */
+.email-content a { color: #00a884; text-decoration: underline; }
+.email-content table { border-collapse: collapse; width: 100%; }
+.email-content td, .email-content th { padding: 4px 8px; border: 1px solid rgba(255,255,255,0.1); }
+.email-content blockquote { border-left: 3px solid rgba(255,255,255,0.2); padding-left: 8px; margin: 4px 0; color: rgba(255,255,255,0.6); }
+.email-content p { margin: 0.25em 0; }
+.email-content h1, .email-content h2, .email-content h3 { font-size: 1em; font-weight: 600; margin: 0.5em 0 0.25em; }
+.email-content img { max-width: 100%; height: auto; }
+.email-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }

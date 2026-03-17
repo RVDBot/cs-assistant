@@ -239,7 +239,7 @@ async function fetchNewEmails(account: EmailAccount) {
 
       // Step 2: Mark ALL as seen immediately to prevent reprocessing
       if (unseenUids.length > 0) {
-        await client.messageFlagsAdd(unseenUids.map(uid => ({ uid })), ['\\Seen'], { uid: true })
+        await client.messageFlagsAdd(unseenUids.join(','), ['\\Seen'], { uid: true })
         console.log(`[email-poll] ${account.name}: Alle berichten als gelezen gemarkeerd`)
       }
 

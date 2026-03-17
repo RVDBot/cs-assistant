@@ -410,16 +410,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
       {/* Manual send input */}
       <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
-        {conversation?.customer_phone && conversation?.customer_email && (
-          <select
-            value={sendChannel}
-            onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
-            className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
-          >
-            <option value="whatsapp">WhatsApp</option>
-            <option value="email">Email</option>
-          </select>
-        )}
+        <select
+          value={sendChannel}
+          onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
+          className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
+        >
+          {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
+          {conversation?.customer_email && <option value="email">Email</option>}
+        </select>
         <textarea
           ref={inputRef}
           value={manualText}

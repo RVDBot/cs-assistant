@@ -394,19 +394,20 @@ export function mergeConversations(keepId: number, mergeId: number) {
   db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId)
   try { db.prepare('UPDATE customer_orders SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId) } catch {}
 
-  // Fill in missing contact info (skip if keep already has the field to avoid UNIQUE conflicts)
+  // Clear unique fields on merge conversation first to free them up
+  db.prepare('UPDATE conversations SET customer_phone = NULL, customer_email = NULL WHERE id = ?').run(mergeId)
+
+  // Fill in missing contact info on the keep conversation
   if (!keep.customer_email && merge.customer_email) {
-    try { db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(merge.customer_email, keepId) } catch {}
+    db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(merge.customer_email, keepId)
   }
   if (!keep.customer_phone && merge.customer_phone) {
-    try { db.prepare('UPDATE conversations SET customer_phone = ? WHERE id = ?').run(merge.customer_phone, keepId) } catch {}
+    db.prepare('UPDATE conversations SET customer_phone = ? WHERE id = ?').run(merge.customer_phone, keepId)
   }
   if (!keep.customer_name && merge.customer_name) {
     db.prepare('UPDATE conversations SET customer_name = ? WHERE id = ?').run(merge.customer_name, keepId)
   }
 
-  // Clear unique fields on merge conversation before deleting to avoid constraint issues
-  db.prepare('UPDATE conversations SET customer_phone = NULL, customer_email = NULL WHERE id = ?').run(mergeId)
   db.prepare('UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(keepId)
   db.prepare('DELETE FROM conversations WHERE id = ?').run(mergeId)
 

@@ -274,18 +274,23 @@ async function processIncomingEmail(
     ? JSON.stringify(ccList.map(c => ({ address: c.address || '', name: c.name || '' })))
     : null
 
+  console.log(`[email-poll] Verwerken uid=${msg.uid} van ${fromAddr}: ${subject}`)
+
   // Skip emails from ourselves (any of our accounts)
   const allAccounts = getEmailAccounts()
   const ourAddresses = new Set(allAccounts.flatMap(a => [a.imap_user.toLowerCase(), a.smtp_user.toLowerCase()]))
-  if (ourAddresses.has(fromAddr)) return
+  if (ourAddresses.has(fromAddr)) {
+    console.log(`[email-poll] Overgeslagen: eigen adres ${fromAddr}`)
+    return
+  }
 
   // Parse body from raw source
   const { simpleParser } = await import('mailparser')
   const parsed = await simpleParser(msg.source)
 
-  // Sanitize and store HTML
+  // Sanitize and store HTML (limit to 100KB to avoid huge newsletters)
   let emailHtml: string | null = null
-  if (parsed.html && typeof parsed.html === 'string') {
+  if (parsed.html && typeof parsed.html === 'string' && parsed.html.length < 100_000) {
     emailHtml = await sanitizeEmailHtml(parsed.html)
   }
 
@@ -297,6 +302,8 @@ async function processIncomingEmail(
   if (!body) body = '(leeg bericht)'
 
   body = stripQuotedReply(body)
+  // Limit body size for translation
+  if (body.length > 5000) body = body.slice(0, 5000) + '\n...(ingekort)'
 
   // Extract attachment metadata
   const attachments = (parsed.attachments || [])

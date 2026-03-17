@@ -58,6 +58,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [mergeList, setMergeList] = useState<Conversation[]>([])
   const [mergeSearch, setMergeSearch] = useState('')
   const [merging, setMerging] = useState(false)
+  const [mergeConfirmId, setMergeConfirmId] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -155,7 +156,6 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
   async function doMerge(mergeId: number) {
     if (!conversationId || merging) return
-    if (!confirm('Weet je zeker dat je deze conversaties wilt samenvoegen? Dit kan niet ongedaan worden.')) return
     setMerging(true)
     try {
       const res = await fetch('/api/conversations/merge', {
@@ -166,6 +166,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       if (res.ok) {
         setShowMerge(false)
         setMergeSearch('')
+        setMergeConfirmId(null)
         onMessageSent?.()
         await load()
       } else {
@@ -474,23 +475,44 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   || (c.customer_phone || '').toLowerCase().includes(q)
                   || (c.customer_email || '').toLowerCase().includes(q)
               }).map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => doMerge(c.id)}
-                  disabled={merging}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors border-b border-whatsapp-border/30 text-left disabled:opacity-50"
-                >
-                  <MonsterAvatar identifier={c.customer_phone || c.customer_email || ''} size={36} className="shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-whatsapp-text text-sm truncate">
-                      {formatContactName(c.customer_name, c.customer_phone || '', c.customer_email)}
+                <div key={c.id} className="border-b border-whatsapp-border/30">
+                  <button
+                    onClick={() => setMergeConfirmId(mergeConfirmId === c.id ? null : c.id)}
+                    disabled={merging}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors text-left disabled:opacity-50"
+                  >
+                    <MonsterAvatar identifier={c.customer_phone || c.customer_email || ''} size={36} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-whatsapp-text text-sm truncate">
+                        {formatContactName(c.customer_name, c.customer_phone || '', c.customer_email)}
+                      </div>
+                      <div className="text-whatsapp-muted text-xs flex items-center gap-1">
+                        {c.customer_phone && <MessageSquare className="w-3 h-3" />}
+                        {c.customer_email && <Mail className="w-3 h-3" />}
+                      </div>
                     </div>
-                    <div className="text-whatsapp-muted text-xs flex items-center gap-1">
-                      {c.customer_phone && <MessageSquare className="w-3 h-3" />}
-                      {c.customer_email && <Mail className="w-3 h-3" />}
+                  </button>
+                  {mergeConfirmId === c.id && (
+                    <div className="px-4 py-2 bg-whatsapp-input flex items-center justify-between">
+                      <span className="text-whatsapp-muted text-xs">Samenvoegen? Dit kan niet ongedaan worden.</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setMergeConfirmId(null)}
+                          className="text-xs text-whatsapp-muted hover:text-whatsapp-text px-2 py-1"
+                        >
+                          Annuleren
+                        </button>
+                        <button
+                          onClick={() => doMerge(c.id)}
+                          disabled={merging}
+                          className="text-xs bg-whatsapp-teal text-white px-3 py-1 rounded hover:bg-whatsapp-teal/90 disabled:opacity-50"
+                        >
+                          {merging ? 'Bezig...' : 'Bevestigen'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>

@@ -1,7 +1,6 @@
 import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
-import sanitizeHtml from 'sanitize-html'
 
 const ALLOWED_ATTACHMENT_TYPES = new Set([
   'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -11,7 +10,8 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
   'application/zip',
 ])
 
-function sanitizeEmailHtml(html: string): string {
+async function sanitizeEmailHtml(html: string): Promise<string> {
+  const sanitizeHtml = (await import('sanitize-html')).default
   return sanitizeHtml(html, {
     allowedTags: (sanitizeHtml.defaults.allowedTags || []).concat(['img', 'span', 'div', 'br', 'hr', 'table', 'thead', 'tbody', 'tr', 'td', 'th']),
     allowedAttributes: {
@@ -161,7 +161,7 @@ let pollingTimer: ReturnType<typeof setTimeout> | null = null
 export function startEmailPolling() {
   if (pollingActive) return
   pollingActive = true
-  pollEmails()
+  pollEmails().catch(e => console.error('[email-poll] Startup error:', e))
 }
 
 export function stopEmailPolling() {
@@ -279,7 +279,7 @@ async function processIncomingEmail(
   // Sanitize and store HTML
   let emailHtml: string | null = null
   if (parsed.html && typeof parsed.html === 'string') {
-    emailHtml = sanitizeEmailHtml(parsed.html)
+    emailHtml = await sanitizeEmailHtml(parsed.html)
   }
 
   // Extract plain text for storage and translation

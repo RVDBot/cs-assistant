@@ -30,7 +30,7 @@ body {
 
 /* Message bubbles */
 .bubble-inbound {
-  background: #202c33;
+  background: #2a3942;
   border-radius: 0 8px 8px 8px;
 }
 .bubble-outbound {

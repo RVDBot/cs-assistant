@@ -102,6 +102,7 @@ export async function testAccountConnection(accountId: number): Promise<{ imap: 
       host: account.imap_host,
       port: account.imap_port,
       secure: account.imap_port === 993,
+      ...(account.imap_port !== 993 ? { doSTARTTLS: true } : {}),
       auth: { user: account.imap_user, pass: account.imap_password },
       logger: false,
       tls: { rejectUnauthorized: false },

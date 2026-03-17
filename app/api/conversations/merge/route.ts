@@ -11,12 +11,10 @@ export async function POST(req: NextRequest) {
 
   try {
     mergeConversations(keep_id, merge_id)
-    log('info', 'systeem', `Conversaties samengevoegd: ${merge_id} → ${keep_id}`)
     return NextResponse.json({ ok: true })
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Samenvoegen mislukt' },
-      { status: 500 }
-    )
+    const error = e instanceof Error ? e.message : 'Samenvoegen mislukt'
+    log('error', 'systeem', `Samenvoegen mislukt: ${merge_id} → ${keep_id}`, { error })
+    return NextResponse.json({ error }, { status: 500 })
   }
 }

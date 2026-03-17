@@ -390,19 +390,25 @@ export function mergeConversations(keepId: number, mergeId: number) {
 
   if (!keep || !merge) throw new Error('Conversatie niet gevonden')
 
+  // Move messages and orders to the keep conversation
   db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId)
-  db.prepare('UPDATE customer_orders SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId)
+  try { db.prepare('UPDATE customer_orders SET conversation_id = ? WHERE conversation_id = ?').run(keepId, mergeId) } catch {}
 
+  // Fill in missing contact info (skip if keep already has the field to avoid UNIQUE conflicts)
   if (!keep.customer_email && merge.customer_email) {
-    db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(merge.customer_email, keepId)
+    try { db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(merge.customer_email, keepId) } catch {}
   }
   if (!keep.customer_phone && merge.customer_phone) {
-    db.prepare('UPDATE conversations SET customer_phone = ? WHERE id = ?').run(merge.customer_phone, keepId)
+    try { db.prepare('UPDATE conversations SET customer_phone = ? WHERE id = ?').run(merge.customer_phone, keepId) } catch {}
   }
   if (!keep.customer_name && merge.customer_name) {
     db.prepare('UPDATE conversations SET customer_name = ? WHERE id = ?').run(merge.customer_name, keepId)
   }
 
+  // Clear unique fields on merge conversation before deleting to avoid constraint issues
+  db.prepare('UPDATE conversations SET customer_phone = NULL, customer_email = NULL WHERE id = ?').run(mergeId)
   db.prepare('UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(keepId)
   db.prepare('DELETE FROM conversations WHERE id = ?').run(mergeId)
+
+  log('info', 'systeem', `Conversaties samengevoegd: ${mergeId} → ${keepId}`, { keepId, mergeId })
 }

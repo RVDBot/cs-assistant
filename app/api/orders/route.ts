@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
         const sources: string[] = [matchSource]
         // Check if this specific order also matches by phone or order number
         const billingPhone = (order.billing.phone || '').replace(/[\s\-()]/g, '')
-        const convPhone = conv.customer_phone.replace(/^whatsapp:/i, '').replace(/\s+/g, '')
+        const convPhone = (conv.customer_phone || '').replace(/^whatsapp:/i, '').replace(/\s+/g, '')
         if (billingPhone && (billingPhone.includes(convPhone) || convPhone.includes(billingPhone))) {
           if (!sources.includes('phone')) sources.push('phone')
         }

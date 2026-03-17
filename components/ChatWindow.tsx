@@ -56,6 +56,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [sendChannel, setSendChannel] = useState<'whatsapp' | 'email'>('whatsapp')
   const [showMerge, setShowMerge] = useState(false)
   const [mergeList, setMergeList] = useState<Conversation[]>([])
+  const [mergeSearch, setMergeSearch] = useState('')
   const [merging, setMerging] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
@@ -147,6 +148,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       const res = await fetch('/api/conversations')
       const all: Conversation[] = await res.json()
       setMergeList(all.filter(c => c.id !== conversationId))
+      setMergeSearch('')
       setShowMerge(true)
     } catch {}
   }
@@ -163,10 +165,16 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       })
       if (res.ok) {
         setShowMerge(false)
+        setMergeSearch('')
         onMessageSent?.()
         await load()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(`Samenvoegen mislukt: ${data.error || 'Onbekende fout'}`)
       }
-    } catch {}
+    } catch (e) {
+      alert(`Samenvoegen mislukt: ${e instanceof Error ? e.message : 'Netwerkfout'}`)
+    }
     setMerging(false)
   }
 
@@ -445,11 +453,27 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 <span className="text-lg">&times;</span>
               </button>
             </div>
+            <div className="px-4 py-2 border-b border-whatsapp-border">
+              <input
+                type="text"
+                value={mergeSearch}
+                onChange={e => setMergeSearch(e.target.value)}
+                placeholder="Zoek op naam, telefoon of email..."
+                className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                autoFocus
+              />
+            </div>
             <div className="flex-1 overflow-y-auto">
               {mergeList.length === 0 && (
                 <div className="text-whatsapp-muted text-sm text-center py-8">Geen andere conversaties</div>
               )}
-              {mergeList.map(c => (
+              {mergeList.filter(c => {
+                if (!mergeSearch.trim()) return true
+                const q = mergeSearch.toLowerCase()
+                return (c.customer_name || '').toLowerCase().includes(q)
+                  || (c.customer_phone || '').toLowerCase().includes(q)
+                  || (c.customer_email || '').toLowerCase().includes(q)
+              }).map(c => (
                 <button
                   key={c.id}
                   onClick={() => doMerge(c.id)}

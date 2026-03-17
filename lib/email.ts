@@ -1,6 +1,8 @@
 import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
+import path from 'path'
+import fs from 'fs'
 
 const ALLOWED_ATTACHMENT_TYPES = new Set([
   'application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -349,15 +351,34 @@ async function processIncomingEmail(
   // Limit body size for translation
   if (body.length > 5000) body = body.slice(0, 5000) + '\n...(ingekort)'
 
-  // Extract attachment metadata
-  const attachments = (parsed.attachments || [])
-    .map(att => ({
+  // Extract and save attachments
+  const attachmentsMeta: Array<{ id: string; filename: string; size: number; contentType: string; allowed: boolean }> = []
+  const attachmentsDir = path.join(path.dirname(process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'cs-assistant.db')), 'attachments')
+  if (!fs.existsSync(attachmentsDir)) fs.mkdirSync(attachmentsDir, { recursive: true })
+
+  for (const att of (parsed.attachments || [])) {
+    const allowed = ALLOWED_ATTACHMENT_TYPES.has(att.contentType || '')
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    const meta = {
+      id,
       filename: att.filename || 'unnamed',
       size: att.size || 0,
       contentType: att.contentType || 'application/octet-stream',
-      allowed: ALLOWED_ATTACHMENT_TYPES.has(att.contentType || ''),
-    }))
-  const emailAttachments = attachments.length > 0 ? JSON.stringify(attachments) : null
+      allowed,
+    }
+
+    // Save allowed attachments to disk
+    if (allowed && att.content) {
+      try {
+        fs.writeFileSync(path.join(attachmentsDir, id), att.content)
+      } catch (e) {
+        console.error(`[email-poll] Bijlage opslaan mislukt: ${meta.filename}`, e instanceof Error ? e.message : String(e))
+      }
+    }
+
+    attachmentsMeta.push(meta)
+  }
+  const emailAttachments = attachmentsMeta.length > 0 ? JSON.stringify(attachmentsMeta) : null
 
   const db = getDb()
 

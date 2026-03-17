@@ -403,15 +403,27 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                       })()}
                       {msg.email_attachments && (() => {
                         try {
-                          const atts = JSON.parse(msg.email_attachments) as Array<{ filename: string; size: number; contentType: string; allowed: boolean }>
+                          const atts = JSON.parse(msg.email_attachments) as Array<{ id?: string; filename: string; size: number; contentType: string; allowed: boolean }>
                           if (atts.length === 0) return null
                           return (
                             <div className="flex flex-wrap gap-1 items-center">
                               <Paperclip className="w-3 h-3 text-whatsapp-muted shrink-0" />
                               {atts.map((a, i) => (
-                                <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded ${a.allowed ? 'bg-black/20 text-whatsapp-muted' : 'bg-red-500/20 text-red-400'}`}>
-                                  {a.filename} ({formatFileSize(a.size)})
-                                </span>
+                                a.id && a.allowed ? (
+                                  <a
+                                    key={i}
+                                    href={`/api/attachments/${a.id}?type=${encodeURIComponent(a.contentType)}&name=${encodeURIComponent(a.filename)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] px-1.5 py-0.5 rounded bg-black/20 text-[#00a884] hover:text-[#06cf9c] underline cursor-pointer transition-colors"
+                                  >
+                                    {a.filename} ({formatFileSize(a.size)})
+                                  </a>
+                                ) : (
+                                  <span key={i} className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                                    {a.filename} ({formatFileSize(a.size)})
+                                  </span>
+                                )
                               ))}
                             </div>
                           )

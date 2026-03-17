@@ -137,10 +137,12 @@ function initSchema(db: Database.Database) {
 
   // Make customer_phone nullable (required for email-only conversations)
   // SQLite cannot ALTER COLUMN, so we rebuild the table
+  // Disable foreign keys during rebuild to prevent CASCADE deleting messages
   try {
     const phoneCol = db.prepare(`PRAGMA table_info(conversations)`).all() as { name: string; notnull: number }[]
     const phoneInfo = phoneCol.find(c => c.name === 'customer_phone')
     if (phoneInfo && phoneInfo.notnull === 1) {
+      db.pragma('foreign_keys = OFF')
       db.exec(`
         CREATE TABLE conversations_new (
           id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,8 +160,11 @@ function initSchema(db: Database.Database) {
         ALTER TABLE conversations_new RENAME TO conversations;
         CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_email ON conversations(customer_email) WHERE customer_email IS NOT NULL;
       `)
+      db.pragma('foreign_keys = ON')
     }
-  } catch {}
+  } catch {
+    try { db.pragma('foreign_keys = ON') } catch {}
+  }
   try { db.exec(`ALTER TABLE messages ADD COLUMN channel TEXT NOT NULL DEFAULT 'whatsapp'`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_subject TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}

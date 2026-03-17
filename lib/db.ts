@@ -132,7 +132,8 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE customer_orders ADD COLUMN match_sources TEXT NOT NULL DEFAULT '[]'`) } catch {}
 
   // Email channel migrations
-  try { db.exec(`ALTER TABLE conversations ADD COLUMN customer_email TEXT UNIQUE`) } catch {}
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN customer_email TEXT`) } catch {}
+  try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_email ON conversations(customer_email) WHERE customer_email IS NOT NULL`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN channel TEXT NOT NULL DEFAULT 'whatsapp'`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_subject TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_message_id TEXT`) } catch {}

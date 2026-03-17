@@ -217,10 +217,15 @@ async function fetchNewEmails(account: EmailAccount) {
   })
 
   try {
+    console.log(`[email-poll] ${account.name}: Verbinden met IMAP...`)
     await client.connect()
+    console.log(`[email-poll] ${account.name}: Verbonden, mailbox locken...`)
     const lock = await client.getMailboxLock('INBOX')
+    console.log(`[email-poll] ${account.name}: Lock verkregen, berichten ophalen...`)
 
     try {
+      // Fetch all unseen messages into an array first, then release the connection
+      const fetchedMessages: Array<{ uid: number; envelope: Record<string, unknown>; source: Buffer }> = []
       const messages = client.fetch({ seen: false }, {
         envelope: true,
         source: true,
@@ -228,14 +233,25 @@ async function fetchNewEmails(account: EmailAccount) {
       })
 
       for await (const msg of messages) {
+        console.log(`[email-poll] ${account.name}: Bericht uid=${msg.uid} opgehaald`)
+        // Mark as seen immediately
+        await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
+        fetchedMessages.push({
+          uid: msg.uid,
+          envelope: (msg as unknown as { envelope: Record<string, unknown> }).envelope,
+          source: (msg as unknown as { source: Buffer }).source,
+        })
+      }
+      console.log(`[email-poll] ${account.name}: ${fetchedMessages.length} berichten opgehaald`)
+
+      lock.release()
+      await client.logout()
+      console.log(`[email-poll] ${account.name}: IMAP verbinding gesloten`)
+
+      // Process messages AFTER closing the IMAP connection
+      for (const msg of fetchedMessages) {
         try {
-          // Mark as seen FIRST to prevent reprocessing on timeout
-          await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen'], { uid: true })
-          await processIncomingEmail(
-            msg as unknown as { uid: number; envelope?: Record<string, unknown>; source: Buffer },
-            htmlToText,
-            account
-          )
+          await processIncomingEmail(msg, htmlToText, account)
         } catch (e) {
           console.error(`[email-poll] Fout bij verwerken email uid=${msg.uid}:`, e instanceof Error ? e.message : String(e))
           log('error', 'systeem', 'Fout bij verwerken email', {
@@ -245,11 +261,10 @@ async function fetchNewEmails(account: EmailAccount) {
           })
         }
       }
-    } finally {
+    } catch (e) {
       lock.release()
+      throw e
     }
-
-    await client.logout()
   } catch (e) {
     log('error', 'systeem', `IMAP verbinding mislukt (${account.name})`, { error: e instanceof Error ? e.message : String(e) })
     try { await client.logout() } catch {}

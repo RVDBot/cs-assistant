@@ -502,7 +502,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                   variants[i] = { ...variants[i], language: e.target.value }
                                   return { ...p, variants }
                                 })}
-                                className="bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal"
+                                className="bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal"
                               >
                                 <option value="">Kies taal...</option>
                                 <option value="nl">Nederlands</option>
@@ -537,7 +537,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                 return { ...p, variants }
                               })}
                               placeholder="Content SID (HXxxxxx)"
-                              className="w-full bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                              className="w-full bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
                             />
                             <textarea
                               value={v.preview}
@@ -549,7 +549,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                               })}
                               placeholder="Preview tekst met {{1}} placeholders"
                               rows={2}
-                              className="w-full bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none"
+                              className="w-full bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none"
                             />
                           </div>
                         ))}
@@ -826,7 +826,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     setEmailTesting(null)
                                   }}
                                   disabled={emailTesting === acc.id}
-                                  className="flex items-center gap-1.5 text-xs bg-whatsapp-deeper text-whatsapp-text px-2.5 py-1 rounded hover:bg-whatsapp-border transition-colors disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-xs bg-whatsapp-panel text-whatsapp-text px-2.5 py-1 rounded hover:bg-whatsapp-border transition-colors disabled:opacity-50"
                                 >
                                   {emailTesting === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                                   Test

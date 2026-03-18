@@ -200,9 +200,16 @@ export async function GET(req: NextRequest) {
     // 3. Search by phone number
     if (!foundEmail) {
       const phoneResults = await searchByPhone(conv.customer_phone)
-      const filtered = phoneResults.filter(o => !dismissedIds.has(o.id))
-      if (filtered.length > 0) {
-        foundEmail = filtered[0].billing.email || ''
+      const convPhone = (conv.customer_phone || '').replace(/^whatsapp:/i, '').replace(/[\s\-()]/g, '')
+      // Only accept results where the billing phone actually matches
+      const phoneMatched = phoneResults.filter(o => {
+        if (dismissedIds.has(o.id)) return false
+        const billingPhone = (o.billing.phone || '').replace(/[\s\-()]/g, '')
+        if (!billingPhone || !convPhone) return false
+        return billingPhone.includes(convPhone) || convPhone.includes(billingPhone)
+      })
+      if (phoneMatched.length > 0) {
+        foundEmail = phoneMatched[0].billing.email || ''
         matchSource = 'phone'
       }
     }

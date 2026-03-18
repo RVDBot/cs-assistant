@@ -175,6 +175,9 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_attachments TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN media_url TEXT`) } catch {}
 
+  // Archive column
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`) } catch {}
+
   // Email accounts table
   db.exec(`
     CREATE TABLE IF NOT EXISTS email_accounts (
@@ -252,6 +255,7 @@ export interface Conversation {
   updated_at: string
   last_message: string | null
   unread_count: number
+  is_archived: number
 }
 
 export interface Message {
@@ -273,6 +277,7 @@ export interface Message {
   email_html: string | null
   email_cc: string | null
   email_attachments: string | null
+  media_url: string | null
 }
 
 export interface ContextFile {

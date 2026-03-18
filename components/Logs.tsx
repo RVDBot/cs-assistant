@@ -93,7 +93,7 @@ export default function Logs({ onClose }: Props) {
           <div className="flex items-center gap-2">
             <ScrollText className="w-5 h-5 text-whatsapp-teal" />
             <h2 className="text-whatsapp-text font-semibold">Activiteitenlog</h2>
-            <span className="text-whatsapp-muted text-xs">({search ? `${filtered.length}/${logs.length}` : logs.length})</span>
+            <span className="text-whatsapp-muted text-xs">({logs.length})</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load} className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors">

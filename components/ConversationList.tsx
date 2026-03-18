@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell, Mail, MessageSquare } from 'lucide-react'
+import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell, Mail, MessageSquare, Archive } from 'lucide-react'
 import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
 import { useNotifications } from '@/hooks/useNotifications'
 import MonsterAvatar from '@/components/MonsterAvatar'
@@ -15,6 +15,7 @@ interface Conversation {
   updated_at: string
   last_message: string | null
   unread_count: number
+  is_archived: number
 }
 
 interface Props {
@@ -30,6 +31,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const prevUnreads = useRef<Map<number, number>>(new Map())
@@ -54,7 +56,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/conversations')
+      const res = await fetch(`/api/conversations${showArchived ? '?archived=1' : ''}`)
       const data: Conversation[] = await res.json()
 
       // Detect new messages and send notifications
@@ -77,7 +79,7 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
     } finally {
       setLoading(false)
     }
-  }, [notify, onSelect])
+  }, [notify, onSelect, showArchived])
 
   useEffect(() => {
     load()
@@ -182,9 +184,9 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
         </div>
       )}
 
-      {/* Search */}
-      <div className="px-3 py-2">
-        <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2">
+      {/* Search + Archive toggle */}
+      <div className="px-3 py-2 flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2 flex-1">
           <Search className="w-4 h-4 text-whatsapp-muted shrink-0" />
           <input
             type="text"
@@ -194,6 +196,13 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
             className="bg-transparent text-whatsapp-text text-sm w-full outline-none placeholder:text-whatsapp-muted"
           />
         </div>
+        <button
+          onClick={() => setShowArchived(v => !v)}
+          className={`p-2 rounded-lg transition-colors shrink-0 ${showArchived ? 'bg-whatsapp-teal/20 text-whatsapp-teal' : 'text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-input'}`}
+          title={showArchived ? 'Toon actieve gesprekken' : 'Toon gearchiveerde gesprekken'}
+        >
+          <Archive className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Conversations */}
@@ -203,9 +212,9 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
         )}
         {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center h-40 text-whatsapp-muted text-sm gap-2">
-            <MessageCircle className="w-10 h-10 opacity-30" />
-            <span>Geen gesprekken</span>
-            <span className="text-xs opacity-60">Berichten komen binnen via WhatsApp</span>
+            {showArchived ? <Archive className="w-10 h-10 opacity-30" /> : <MessageCircle className="w-10 h-10 opacity-30" />}
+            <span>{showArchived ? 'Geen gearchiveerde gesprekken' : 'Geen gesprekken'}</span>
+            {!showArchived && <span className="text-xs opacity-60">Berichten komen binnen via WhatsApp</span>}
           </div>
         )}
         {filtered.map(conv => (

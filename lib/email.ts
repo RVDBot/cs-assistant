@@ -423,7 +423,8 @@ async function processIncomingEmail(
       UPDATE conversations SET
         updated_at = CURRENT_TIMESTAMP,
         last_message = ?,
-        unread_count = unread_count + 1
+        unread_count = unread_count + 1,
+        is_archived = 0
       WHERE id = ?
     `).run(body.slice(0, 100), convId)
 

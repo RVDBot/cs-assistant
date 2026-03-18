@@ -35,5 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     db.prepare('UPDATE conversations SET customer_name = ? WHERE id = ?').run(body.customer_name, idNum)
   }
 
+  if (body.is_archived !== undefined) {
+    db.prepare('UPDATE conversations SET is_archived = ? WHERE id = ?').run(body.is_archived ? 1 : 0, idNum)
+  }
+
   return NextResponse.json({ ok: true })
 }

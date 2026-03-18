@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
@@ -32,6 +32,7 @@ interface Conversation {
   customer_name: string | null
   detected_language: string
   unread_count: number
+  is_archived: number
 }
 
 function EmailCc({ cc }: { cc: Array<{ address: string; name: string }> }) {
@@ -307,6 +308,23 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             >
               <Merge className="w-3 h-3" />
               <span className="hidden sm:inline">Samenvoegen</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (!conversation) return
+                const archive = !conversation.is_archived
+                await fetch(`/api/conversations/${conversation.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ is_archived: archive }),
+                })
+                onMessageSent?.()
+                if (archive) onBack?.()
+              }}
+              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+            >
+              <Archive className="w-3 h-3" />
+              <span className="hidden sm:inline">{conversation?.is_archived ? 'Terughalen' : 'Archiveren'}</span>
             </button>
           </div>
         </div>

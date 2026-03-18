@@ -35,3 +35,29 @@ export async function sendWhatsAppMessage(to: string, body: string): Promise<str
   const message = await client.messages.create(params)
   return message.sid
 }
+
+export async function sendWhatsAppTemplate(
+  to: string,
+  contentSid: string,
+  contentVariables: Record<string, string>
+): Promise<string> {
+  const { accountSid, authToken, phoneNumber, baseUrl } = getCredentials()
+  if (!accountSid || !authToken || !phoneNumber) {
+    throw new Error('Twilio credentials not configured')
+  }
+
+  const twilio = (await import('twilio')).default
+  const client = twilio(accountSid, authToken)
+
+  const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
+  const fromFormatted = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`
+
+  const message = await client.messages.create({
+    from: fromFormatted,
+    to: toFormatted,
+    contentSid,
+    contentVariables: JSON.stringify(contentVariables),
+    ...(baseUrl ? { statusCallback: `${baseUrl.replace(/\/$/, '')}/api/twilio/status` } : {}),
+  })
+  return message.sid
+}

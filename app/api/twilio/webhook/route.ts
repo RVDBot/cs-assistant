@@ -80,15 +80,16 @@ export async function POST(req: NextRequest) {
     return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
   }
 
-  // Upsert conversation (unarchive on new message)
+  // Upsert conversation (unarchive on new message, update last_inbound_at)
   db.prepare(`
-    INSERT INTO conversations (customer_phone, updated_at, last_message, unread_count)
-    VALUES (?, CURRENT_TIMESTAMP, ?, 1)
+    INSERT INTO conversations (customer_phone, updated_at, last_message, unread_count, last_inbound_at)
+    VALUES (?, CURRENT_TIMESTAMP, ?, 1, CURRENT_TIMESTAMP)
     ON CONFLICT(customer_phone) DO UPDATE SET
-      updated_at   = CURRENT_TIMESTAMP,
-      last_message = excluded.last_message,
-      unread_count = unread_count + 1,
-      is_archived  = 0
+      updated_at     = CURRENT_TIMESTAMP,
+      last_message   = excluded.last_message,
+      unread_count   = unread_count + 1,
+      is_archived    = 0,
+      last_inbound_at = CURRENT_TIMESTAMP
   `).run(from, content.slice(0, 100))
 
   const conv = db.prepare('SELECT id, detected_language FROM conversations WHERE customer_phone = ?').get(from) as {

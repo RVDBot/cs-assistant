@@ -178,6 +178,43 @@ function initSchema(db: Database.Database) {
   // Archive column
   try { db.exec(`ALTER TABLE conversations ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+  // WhatsApp template support
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN last_inbound_at DATETIME`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN template_id INTEGER`) } catch {}
+
+  // Backfill last_inbound_at from existing inbound messages
+  try {
+    db.exec(`
+      UPDATE conversations SET last_inbound_at = (
+        SELECT MAX(sent_at) FROM messages
+        WHERE messages.conversation_id = conversations.id
+          AND messages.direction = 'inbound'
+          AND messages.channel = 'whatsapp'
+      ) WHERE last_inbound_at IS NULL
+    `)
+  } catch {}
+
+  // WhatsApp templates tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wa_templates (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL UNIQUE,
+      description TEXT,
+      variables   TEXT NOT NULL DEFAULT '[]',
+      created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS wa_template_variants (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id INTEGER NOT NULL,
+      language    TEXT NOT NULL,
+      content_sid TEXT NOT NULL,
+      preview     TEXT,
+      FOREIGN KEY (template_id) REFERENCES wa_templates(id) ON DELETE CASCADE,
+      UNIQUE(template_id, language)
+    );
+  `)
+
   // Email accounts table
   db.exec(`
     CREATE TABLE IF NOT EXISTS email_accounts (
@@ -256,6 +293,7 @@ export interface Conversation {
   last_message: string | null
   unread_count: number
   is_archived: number
+  last_inbound_at: string | null
 }
 
 export interface Message {
@@ -278,6 +316,7 @@ export interface Message {
   email_cc: string | null
   email_attachments: string | null
   media_url: string | null
+  template_id: number | null
 }
 
 export interface ContextFile {

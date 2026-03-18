@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -140,10 +140,11 @@ function NotificationSettings() {
   )
 }
 
-type Tab = 'whatsapp' | 'email' | 'claude' | 'woocommerce' | 'general'
+type Tab = 'whatsapp' | 'templates' | 'email' | 'claude' | 'woocommerce' | 'general'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'whatsapp', label: 'WhatsApp', icon: <MessageSquare className="w-4 h-4" /> },
+  { id: 'templates', label: 'Templates', icon: <FileStack className="w-4 h-4" /> },
   { id: 'email', label: 'Email', icon: <Mail className="w-4 h-4" /> },
   { id: 'claude', label: 'Claude', icon: <Bot className="w-4 h-4" /> },
   { id: 'woocommerce', label: 'WooCommerce', icon: <ShoppingCart className="w-4 h-4" /> },
@@ -201,6 +202,32 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [emailTesting, setEmailTesting] = useState<number | null>(null)
   const [emailTestResult, setEmailTestResult] = useState<{ accountId: number; imap: boolean; smtp: boolean; errors: string[] } | null>(null)
 
+  // Template state
+  interface TemplateVariant {
+    language: string
+    content_sid: string
+    preview: string
+  }
+  interface TemplateForm {
+    id?: number
+    name: string
+    description: string
+    variables: { key: string; label: string }[]
+    variants: TemplateVariant[]
+  }
+  const [templates, setTemplates] = useState<(TemplateForm & { id: number })[]>([])
+  const [editingTemplate, setEditingTemplate] = useState<TemplateForm | null>(null)
+  const [templateSaving, setTemplateSaving] = useState(false)
+
+  const emptyTemplate: TemplateForm = {
+    name: '', description: '', variables: [{ key: '1', label: '' }], variants: [{ language: 'nl', content_sid: '', preview: '' }],
+  }
+
+  async function fetchTemplates() {
+    const res = await fetch('/api/templates')
+    setTemplates(await res.json())
+  }
+
   const router = useRouter()
 
   const emptyAccount: EmailAccountForm = {
@@ -230,10 +257,12 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
       fetch('/api/settings').then(r => r.json()),
       fetch('/api/token-usage').then(r => r.json()),
       fetch('/api/email/accounts').then(r => r.json()),
-    ]).then(([settingsData, tokenData, accountsData]) => {
+      fetch('/api/templates').then(r => r.json()),
+    ]).then(([settingsData, tokenData, accountsData, templatesData]) => {
       setSettings(prev => ({ ...prev, ...settingsData }))
       setTokenStats(tokenData)
       setEmailAccounts(accountsData)
+      setTemplates(templatesData)
       setLoading(false)
     })
   }, [])
@@ -384,6 +413,252 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       </div>
                       <p className="text-whatsapp-muted text-[11px]">Wordt automatisch meegestuurd bij elk uitgaand bericht voor bezorgd/gelezen status.</p>
                     </div>
+                  )}
+                </>
+              )}
+
+              {/* Templates tab */}
+              {contentTab === 'templates' && (
+                <>
+                  {editingTemplate ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditingTemplate(null)} className="text-whatsapp-muted hover:text-whatsapp-text">
+                          <ArrowLeft className="w-4 h-4" />
+                        </button>
+                        <h3 className="text-whatsapp-text font-medium text-sm">
+                          {editingTemplate.id ? 'Template bewerken' : 'Nieuwe template'}
+                        </h3>
+                      </div>
+
+                      <Field label="Naam" id="tpl_name" value={editingTemplate.name} onChange={v => setEditingTemplate(p => p && ({ ...p, name: v }))} placeholder="Bijv. Bestelling verzonden" />
+                      <Field label="Beschrijving" id="tpl_desc" value={editingTemplate.description} onChange={v => setEditingTemplate(p => p && ({ ...p, description: v }))} placeholder="Korte omschrijving" />
+
+                      {/* Variables */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-whatsapp-muted text-xs font-medium">Variabelen</p>
+                          <button
+                            onClick={() => setEditingTemplate(p => p && ({
+                              ...p,
+                              variables: [...p.variables, { key: String(p.variables.length + 1), label: '' }],
+                            }))}
+                            className="flex items-center gap-1 text-xs text-whatsapp-teal hover:underline"
+                          >
+                            <Plus className="w-3 h-3" /> Toevoegen
+                          </button>
+                        </div>
+                        {editingTemplate.variables.map((v, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-whatsapp-muted text-xs w-8 shrink-0 text-center">{`{{${v.key}}}`}</span>
+                            <input
+                              value={v.label}
+                              onChange={e => setEditingTemplate(p => {
+                                if (!p) return p
+                                const vars = [...p.variables]
+                                vars[i] = { ...vars[i], label: e.target.value }
+                                return { ...p, variables: vars }
+                              })}
+                              placeholder="Label (bijv. Klantnaam)"
+                              className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                            />
+                            {editingTemplate.variables.length > 1 && (
+                              <button
+                                onClick={() => setEditingTemplate(p => p && ({
+                                  ...p,
+                                  variables: p.variables.filter((_, j) => j !== i),
+                                }))}
+                                className="text-whatsapp-muted hover:text-red-400 p-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Variants */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-whatsapp-muted text-xs font-medium">Taalvarianten</p>
+                          <button
+                            onClick={() => setEditingTemplate(p => p && ({
+                              ...p,
+                              variants: [...p.variants, { language: '', content_sid: '', preview: '' }],
+                            }))}
+                            className="flex items-center gap-1 text-xs text-whatsapp-teal hover:underline"
+                          >
+                            <Plus className="w-3 h-3" /> Variant toevoegen
+                          </button>
+                        </div>
+                        {editingTemplate.variants.map((v, i) => (
+                          <div key={i} className="bg-whatsapp-input rounded-lg p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={v.language}
+                                onChange={e => setEditingTemplate(p => {
+                                  if (!p) return p
+                                  const variants = [...p.variants]
+                                  variants[i] = { ...variants[i], language: e.target.value }
+                                  return { ...p, variants }
+                                })}
+                                className="bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal"
+                              >
+                                <option value="">Kies taal...</option>
+                                <option value="nl">Nederlands</option>
+                                <option value="en">Engels</option>
+                                <option value="de">Duits</option>
+                                <option value="fr">Frans</option>
+                                <option value="es">Spaans</option>
+                                <option value="it">Italiaans</option>
+                                <option value="pt">Portugees</option>
+                                <option value="pl">Pools</option>
+                                <option value="sv">Zweeds</option>
+                                <option value="da">Deens</option>
+                              </select>
+                              {editingTemplate.variants.length > 1 && (
+                                <button
+                                  onClick={() => setEditingTemplate(p => p && ({
+                                    ...p,
+                                    variants: p.variants.filter((_, j) => j !== i),
+                                  }))}
+                                  className="ml-auto text-whatsapp-muted hover:text-red-400 p-1"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              value={v.content_sid}
+                              onChange={e => setEditingTemplate(p => {
+                                if (!p) return p
+                                const variants = [...p.variants]
+                                variants[i] = { ...variants[i], content_sid: e.target.value }
+                                return { ...p, variants }
+                              })}
+                              placeholder="Content SID (HXxxxxx)"
+                              className="w-full bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                            />
+                            <textarea
+                              value={v.preview}
+                              onChange={e => setEditingTemplate(p => {
+                                if (!p) return p
+                                const variants = [...p.variants]
+                                variants[i] = { ...variants[i], preview: e.target.value }
+                                return { ...p, variants }
+                              })}
+                              placeholder="Preview tekst met {{1}} placeholders"
+                              rows={2}
+                              className="w-full bg-whatsapp-deeper text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={async () => {
+                            if (!editingTemplate.name || editingTemplate.variants.some(v => !v.language || !v.content_sid)) return
+                            setTemplateSaving(true)
+                            const method = editingTemplate.id ? 'PATCH' : 'POST'
+                            const url = editingTemplate.id ? `/api/templates/${editingTemplate.id}` : '/api/templates'
+                            await fetch(url, {
+                              method,
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(editingTemplate),
+                            })
+                            await fetchTemplates()
+                            setEditingTemplate(null)
+                            setTemplateSaving(false)
+                          }}
+                          disabled={templateSaving}
+                          className="flex items-center gap-2 bg-whatsapp-teal text-white text-sm px-4 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors disabled:opacity-50"
+                        >
+                          {templateSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          {editingTemplate.id ? 'Bijwerken' : 'Toevoegen'}
+                        </button>
+                        <button
+                          onClick={() => setEditingTemplate(null)}
+                          className="text-sm text-whatsapp-muted hover:text-whatsapp-text px-4 py-2 rounded-lg hover:bg-whatsapp-input transition-colors"
+                        >
+                          Annuleren
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-whatsapp-text font-medium text-sm">WhatsApp Templates</h3>
+                        <button
+                          onClick={() => setEditingTemplate({ ...emptyTemplate })}
+                          className="flex items-center gap-1.5 text-xs text-whatsapp-teal hover:underline"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Template toevoegen
+                        </button>
+                      </div>
+                      <p className="text-whatsapp-muted text-[11px]">Beheer goedgekeurde WhatsApp templates voor berichten buiten het 24-uurs venster.</p>
+
+                      {templates.length === 0 ? (
+                        <div className="bg-whatsapp-input rounded-lg p-4 text-center">
+                          <p className="text-whatsapp-muted text-sm">Geen templates geconfigureerd</p>
+                          <button
+                            onClick={() => setEditingTemplate({ ...emptyTemplate })}
+                            className="mt-2 text-xs text-whatsapp-teal hover:underline"
+                          >
+                            Voeg je eerste template toe
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {templates.map(tpl => (
+                            <div key={tpl.id} className="bg-whatsapp-input rounded-lg p-3 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="text-whatsapp-text text-sm font-medium">{tpl.name}</span>
+                                  {tpl.description && <p className="text-whatsapp-muted text-xs">{tpl.description}</p>}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setEditingTemplate({
+                                      id: tpl.id,
+                                      name: tpl.name,
+                                      description: tpl.description || '',
+                                      variables: tpl.variables.length > 0 ? tpl.variables : [{ key: '1', label: '' }],
+                                      variants: tpl.variants.map((v: { language: string; content_sid: string; preview: string | null }) => ({
+                                        language: v.language,
+                                        content_sid: v.content_sid,
+                                        preview: v.preview || '',
+                                      })),
+                                    })}
+                                    className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                                    title="Bewerken"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Template "${tpl.name}" verwijderen?`)) return
+                                      await fetch(`/api/templates/${tpl.id}`, { method: 'DELETE' })
+                                      await fetchTemplates()
+                                    }}
+                                    className="p-1.5 text-whatsapp-muted hover:text-red-400 transition-colors"
+                                    title="Verwijderen"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-whatsapp-muted">
+                                <span>{tpl.variants.length} taal{tpl.variants.length !== 1 ? 'varianten' : 'variant'}</span>
+                                <span>&middot;</span>
+                                <span>{tpl.variants.map((v: { language: string }) => v.language.toUpperCase()).join(', ')}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

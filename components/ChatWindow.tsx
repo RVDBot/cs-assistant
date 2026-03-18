@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
@@ -23,6 +23,7 @@ interface Message {
   email_cc?: string | null
   email_attachments?: string | null
   media_url?: string | null
+  template_id?: number | null
 }
 
 interface Conversation {
@@ -33,6 +34,15 @@ interface Conversation {
   detected_language: string
   unread_count: number
   is_archived: number
+  last_inbound_at: string | null
+}
+
+interface Template {
+  id: number
+  name: string
+  description: string | null
+  variables: { key: string; label: string }[]
+  variants: { language: string; content_sid: string; preview: string | null }[]
 }
 
 function EmailCc({ cc }: { cc: Array<{ address: string; name: string }> }) {
@@ -83,6 +93,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [mergeSearch, setMergeSearch] = useState('')
   const [merging, setMerging] = useState(false)
   const [mergeConfirmId, setMergeConfirmId] = useState<number | null>(null)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
+  const [templateVars, setTemplateVars] = useState<Record<string, string>>({})
+  const [sendingTemplate, setSendingTemplate] = useState(false)
+  const [windowTimeLeft, setWindowTimeLeft] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -97,6 +112,69 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Calculate WhatsApp 24h window remaining time
+  useEffect(() => {
+    function calcWindow() {
+      if (!conversation?.customer_phone || !conversation.last_inbound_at) {
+        setWindowTimeLeft(null)
+        return
+      }
+      const lastInbound = new Date(conversation.last_inbound_at + 'Z').getTime()
+      const windowEnd = lastInbound + 24 * 60 * 60 * 1000
+      const remaining = windowEnd - Date.now()
+      setWindowTimeLeft(remaining)
+    }
+    calcWindow()
+    const interval = setInterval(calcWindow, 60_000)
+    return () => clearInterval(interval)
+  }, [conversation?.id, conversation?.last_inbound_at, conversation?.customer_phone])
+
+  // Fetch templates when window is expired or warning
+  useEffect(() => {
+    if (windowTimeLeft !== null && windowTimeLeft < 2 * 60 * 60 * 1000) {
+      fetch('/api/templates').then(r => r.json()).then(setTemplates).catch(() => {})
+    }
+  }, [windowTimeLeft !== null && windowTimeLeft < 2 * 60 * 60 * 1000])
+
+  const windowExpired = windowTimeLeft !== null && windowTimeLeft <= 0
+  const windowWarning = windowTimeLeft !== null && windowTimeLeft > 0 && windowTimeLeft < 2 * 60 * 60 * 1000
+
+  function formatTimeRemaining(ms: number) {
+    const totalMinutes = Math.ceil(ms / 60_000)
+    const h = Math.floor(totalMinutes / 60)
+    const m = totalMinutes % 60
+    if (h > 0) return `${h}u ${m}m`
+    return `${m}m`
+  }
+
+  async function sendTemplate() {
+    if (!conversation || !selectedTemplate || sendingTemplate) return
+    setSendingTemplate(true)
+    try {
+      const res = await fetch('/api/messages/template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          template_id: selectedTemplate.id,
+          variables: templateVars,
+        }),
+      })
+      if (res.ok) {
+        setSelectedTemplate(null)
+        setTemplateVars({})
+        onMessageSent?.()
+        await load()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(`Template versturen mislukt: ${data.error || 'Onbekende fout'}`)
+      }
+    } catch (e) {
+      alert(`Template versturen mislukt: ${e instanceof Error ? e.message : 'Netwerkfout'}`)
+    }
+    setSendingTemplate(false)
+  }
 
   const load = useCallback(async () => {
     if (!conversationId) return
@@ -136,6 +214,8 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     setConversation(null)
     setOrderCount(0)
     setShowMerge(false)
+    setSelectedTemplate(null)
+    setTemplateVars({})
     load()
     // Fetch order count from DB (no WC API call)
     fetch(`/api/orders?conversation_id=${conversationId}&count=1`)
@@ -500,6 +580,9 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   )}
 
                   <div className={`flex items-center gap-1 mt-1 ${isInbound ? 'justify-start' : 'justify-end'}`}>
+                    {msg.template_id && (
+                      <span title="Template bericht"><FileStack className="w-2.5 h-2.5 text-whatsapp-teal" /></span>
+                    )}
                     {msg.channel === 'email' ? (
                       <Mail className="w-2.5 h-2.5 text-whatsapp-muted" />
                     ) : (
@@ -530,39 +613,152 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
         <div ref={bottomRef} />
       </div>
 
-      {/* Manual send input */}
-      <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
-        <select
-          value={sendChannel}
-          onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
-          className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
-        >
-          {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
-          {conversation?.customer_email && <option value="email">Email</option>}
-        </select>
-        <textarea
-          ref={inputRef}
-          value={manualText}
-          onChange={e => setManualText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Typ een bericht..."
-          rows={1}
-          className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
-          style={{ height: 'auto' }}
-          onInput={e => {
-            const t = e.currentTarget
-            t.style.height = 'auto'
-            t.style.height = `${Math.min(t.scrollHeight, 128)}px`
-          }}
-        />
-        <button
-          onClick={sendManual}
-          disabled={sending || !manualText.trim()}
-          className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
-        >
-          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        </button>
-      </div>
+      {/* Window warning banner */}
+      {windowWarning && sendChannel === 'whatsapp' && (
+        <div className="px-4 py-2 bg-yellow-500/15 border-t border-yellow-500/30 flex items-center gap-2 shrink-0">
+          <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+          <span className="text-yellow-300 text-xs">
+            WhatsApp-venster sluit over {formatTimeRemaining(windowTimeLeft!)}. Daarna alleen templates.
+          </span>
+        </div>
+      )}
+
+      {/* Template picker (when WhatsApp window expired) */}
+      {windowExpired && sendChannel === 'whatsapp' ? (
+        <div className="border-t border-whatsapp-border shrink-0 bg-whatsapp-panel">
+          {selectedTemplate ? (
+            /* Variable form */
+            <div className="px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-whatsapp-text text-sm font-medium">{selectedTemplate.name}</h4>
+                <button onClick={() => { setSelectedTemplate(null); setTemplateVars({}) }} className="text-whatsapp-muted hover:text-whatsapp-text text-xs">
+                  Terug
+                </button>
+              </div>
+              {/* Preview */}
+              {(() => {
+                const nlVariant = selectedTemplate.variants.find(v => v.language === 'nl') || selectedTemplate.variants[0]
+                return nlVariant?.preview ? (
+                  <div className="text-whatsapp-text/70 text-xs bg-whatsapp-input rounded px-3 py-2 italic whitespace-pre-wrap">
+                    {nlVariant.preview}
+                  </div>
+                ) : null
+              })()}
+              {/* Variable inputs */}
+              {selectedTemplate.variables.map(v => (
+                <div key={v.key} className="space-y-1">
+                  <label className="text-whatsapp-muted text-xs">{v.label || `Variabele {{${v.key}}}`}</label>
+                  <input
+                    value={templateVars[v.key] || ''}
+                    onChange={e => setTemplateVars(p => ({ ...p, [v.key]: e.target.value }))}
+                    className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                    placeholder={v.label}
+                  />
+                </div>
+              ))}
+              {/* Language info */}
+              <div className="text-whatsapp-muted text-[11px] flex items-center gap-1">
+                Wordt verstuurd in {conversation?.detected_language?.toUpperCase() || '?'}
+                {(() => {
+                  const hasExact = selectedTemplate.variants.some(v => v.language === conversation?.detected_language)
+                  if (!hasExact) {
+                    const fallback = selectedTemplate.variants.find(v => v.language === 'en') || selectedTemplate.variants[0]
+                    return (
+                      <span className="text-yellow-400 ml-1">
+                        (fallback: {fallback?.language.toUpperCase()})
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
+              <button
+                onClick={sendTemplate}
+                disabled={sendingTemplate || selectedTemplate.variables.some(v => !templateVars[v.key]?.trim())}
+                className="w-full flex items-center justify-center gap-2 bg-whatsapp-teal disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+              >
+                {sendingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Verstuur template
+              </button>
+            </div>
+          ) : (
+            /* Template cards */
+            <div className="px-4 py-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <FileStack className="w-4 h-4 text-whatsapp-teal shrink-0" />
+                <span className="text-whatsapp-muted text-xs">Het 24-uurs venster is verlopen. Gebruik een template.</span>
+              </div>
+              {templates.length === 0 ? (
+                <p className="text-whatsapp-muted text-xs py-2">Geen templates beschikbaar. Voeg templates toe in Instellingen.</p>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {templates.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      onClick={() => {
+                        setSelectedTemplate(tpl)
+                        setTemplateVars({})
+                      }}
+                      className="shrink-0 bg-whatsapp-input hover:bg-whatsapp-border rounded-lg p-3 text-left transition-colors min-w-[160px] max-w-[200px]"
+                    >
+                      <p className="text-whatsapp-text text-sm font-medium truncate">{tpl.name}</p>
+                      {tpl.description && <p className="text-whatsapp-muted text-xs mt-0.5 line-clamp-2">{tpl.description}</p>}
+                      <p className="text-whatsapp-muted text-[10px] mt-1">
+                        {tpl.variants.map(v => v.language.toUpperCase()).join(', ')}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Still allow switching to email if available */}
+          {conversation?.customer_email && (
+            <div className="px-4 pb-3">
+              <button
+                onClick={() => { setSendChannel('email'); onChannelChange?.('email') }}
+                className="text-xs text-whatsapp-teal hover:underline flex items-center gap-1"
+              >
+                <Mail className="w-3 h-3" /> Stuur via email
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Normal manual send input */
+        <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
+          <select
+            value={sendChannel}
+            onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
+            className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
+          >
+            {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
+            {conversation?.customer_email && <option value="email">Email</option>}
+          </select>
+          <textarea
+            ref={inputRef}
+            value={manualText}
+            onChange={e => setManualText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Typ een bericht..."
+            rows={1}
+            className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+            style={{ height: 'auto' }}
+            onInput={e => {
+              const t = e.currentTarget
+              t.style.height = 'auto'
+              t.style.height = `${Math.min(t.scrollHeight, 128)}px`
+            }}
+          />
+          <button
+            onClick={sendManual}
+            disabled={sending || !manualText.trim()}
+            className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
 
       {/* Merge modal */}
       {showMerge && (

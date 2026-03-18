@@ -56,6 +56,18 @@ function saveOrderData(
        customer_email = excluded.customer_email,
        match_sources = ?`
   ).run(convId, order.id, order.number, order.billing.email || '', JSON.stringify(details), JSON.stringify(mergedSources), JSON.stringify(mergedSources))
+
+  // Copy billing email to conversation if conversation has no email yet
+  if (order.billing.email) {
+    const conv = db.prepare('SELECT customer_email FROM conversations WHERE id = ?').get(convId) as { customer_email: string | null } | undefined
+    if (conv && !conv.customer_email) {
+      // Only set if no other conversation already uses this email
+      const emailInUse = db.prepare('SELECT id FROM conversations WHERE customer_email = ? AND id != ?').get(order.billing.email, convId)
+      if (!emailInUse) {
+        db.prepare('UPDATE conversations SET customer_email = ? WHERE id = ?').run(order.billing.email, convId)
+      }
+    }
+  }
 }
 
 function getDismissedIds(db: ReturnType<typeof getDb>, convId: number): Set<number> {

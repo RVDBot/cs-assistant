@@ -13,16 +13,20 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 ])
 
 async function sanitizeEmailHtml(html: string): Promise<string> {
+  // Strip inline base64 images before sanitizing (they're huge and useless)
+  const stripped = html.replace(/<img[^>]*src\s*=\s*["']data:[^"']*["'][^>]*\/?>/gi, '')
+
   const sanitizeHtml = (await import('sanitize-html')).default
-  return sanitizeHtml(html, {
+  return sanitizeHtml(stripped, {
     allowedTags: (sanitizeHtml.defaults.allowedTags || []).concat(['img', 'span', 'div', 'br', 'hr', 'table', 'thead', 'tbody', 'tr', 'td', 'th']),
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       '*': ['style', 'class'],
       'a': ['href', 'target', 'rel'],
-      'img': ['alt', 'width', 'height'],
+      'img': ['src', 'alt', 'width', 'height'],
     },
     allowedSchemes: ['https', 'mailto'],
+    allowedSchemesAppliedToAttributes: ['href', 'src'],
     disallowedTagsMode: 'discard',
   })
 }
@@ -346,6 +350,10 @@ async function processIncomingEmail(
     body = htmlToText(parsed.html, { wordwrap: false })
   }
   if (!body) body = '(leeg bericht)'
+
+  // Strip inline base64 data from plain text
+  body = body.replace(/\[data:[^\]]{20,}\]/g, '[afbeelding]')
+  body = body.replace(/data:[a-zA-Z/]+;base64,[A-Za-z0-9+/=]{20,}/g, '[afbeelding]')
 
   body = stripQuotedReply(body)
   // Limit body size for translation

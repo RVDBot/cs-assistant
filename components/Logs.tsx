@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { X, ScrollText, RefreshCw, Trash2, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { X, ScrollText, RefreshCw, Trash2, Loader2, Search } from 'lucide-react'
 import { formatPhone } from '@/lib/utils'
 
 interface LogEntry {
@@ -39,6 +39,19 @@ export default function Logs({ onClose }: Props) {
   const [category, setCategory] = useState('')
   const [clearing, setClearing] = useState(false)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search) return logs
+    const q = search.toLowerCase()
+    return logs.filter(e =>
+      e.message.toLowerCase().includes(q) ||
+      (e.customer_name || '').toLowerCase().includes(q) ||
+      (e.customer_phone || '').toLowerCase().includes(q) ||
+      (e.meta || '').toLowerCase().includes(q) ||
+      e.category.toLowerCase().includes(q)
+    )
+  }, [logs, search])
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '200' })
@@ -80,7 +93,7 @@ export default function Logs({ onClose }: Props) {
           <div className="flex items-center gap-2">
             <ScrollText className="w-5 h-5 text-whatsapp-teal" />
             <h2 className="text-whatsapp-text font-semibold">Activiteitenlog</h2>
-            <span className="text-whatsapp-muted text-xs">({logs.length})</span>
+            <span className="text-whatsapp-muted text-xs">({search ? `${filtered.length}/${logs.length}` : logs.length})</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load} className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors">
@@ -97,6 +110,16 @@ export default function Logs({ onClose }: Props) {
 
         {/* Filters */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-whatsapp-border">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-whatsapp-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Zoeken..."
+              className="w-full bg-whatsapp-input text-whatsapp-text text-xs pl-7 pr-2 py-1.5 rounded-lg border border-whatsapp-border outline-none placeholder:text-whatsapp-muted"
+            />
+          </div>
           <select
             value={level}
             onChange={e => setLevel(e.target.value)}
@@ -126,12 +149,12 @@ export default function Logs({ onClose }: Props) {
             <div className="flex items-center justify-center h-32 text-whatsapp-muted">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
-          ) : logs.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-whatsapp-muted text-sm">
               Geen logs gevonden
             </div>
           ) : (
-            logs.map(entry => (
+            filtered.map(entry => (
               <div
                 key={entry.id}
                 className="border-b border-whatsapp-border/50 hover:bg-whatsapp-input/30 transition-colors"

@@ -54,8 +54,29 @@ export async function POST(req: NextRequest) {
     return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
   }
 
-  // Regular message — require body
-  if (!messageBody) {
+  // Collect media attachments from Twilio
+  const numMedia = parseInt(params.NumMedia || '0', 10)
+  const mediaItems: Array<{ url: string; contentType: string }> = []
+  for (let i = 0; i < numMedia; i++) {
+    const url = params[`MediaUrl${i}`]
+    const contentType = params[`MediaContentType${i}`]
+    if (url) mediaItems.push({ url, contentType: contentType || 'application/octet-stream' })
+  }
+
+  // Build display content for media-only messages
+  let content = messageBody
+  if (!content && mediaItems.length > 0) {
+    const labels = mediaItems.map(m => {
+      if (m.contentType.startsWith('image/')) return '📷 Afbeelding'
+      if (m.contentType.startsWith('video/')) return '🎥 Video'
+      if (m.contentType.startsWith('audio/')) return '🎵 Audio'
+      return '📎 Bijlage'
+    })
+    content = labels.join(', ')
+  }
+
+  // Require body or media
+  if (!content) {
     return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
   }
 
@@ -67,31 +88,48 @@ export async function POST(req: NextRequest) {
       updated_at   = CURRENT_TIMESTAMP,
       last_message = excluded.last_message,
       unread_count = unread_count + 1
-  `).run(from, messageBody.slice(0, 100))
+  `).run(from, content.slice(0, 100))
 
   const conv = db.prepare('SELECT id, detected_language FROM conversations WHERE customer_phone = ?').get(from) as {
     id: number; detected_language: string
   }
 
   let language = conv.detected_language || 'en'
-  let dutchContent = messageBody
+  let dutchContent = content
 
-  try {
-    language = await detectLanguage(messageBody, conv.id)
-    dutchContent = await translateToDutch(messageBody, language, conv.id)
-    if (language !== conv.detected_language) {
-      db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
+  // Only translate if there's actual text (not just media labels)
+  if (messageBody) {
+    try {
+      language = await detectLanguage(messageBody, conv.id)
+      dutchContent = await translateToDutch(messageBody, language, conv.id)
+      if (language !== conv.detected_language) {
+        db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
+      }
+    } catch (e) {
+      log('error', 'ai', 'Vertaling mislukt', { error: e instanceof Error ? e.message : String(e), from }, conv.id)
     }
-  } catch (e) {
-    log('error', 'ai', 'Vertaling mislukt', { error: e instanceof Error ? e.message : String(e), from }, conv.id)
+    // Prepend media labels to translated content if message has both text and media
+    if (mediaItems.length > 0) {
+      const labels = mediaItems.map(m => {
+        if (m.contentType.startsWith('image/')) return '📷'
+        if (m.contentType.startsWith('video/')) return '🎥'
+        if (m.contentType.startsWith('audio/')) return '🎵'
+        return '📎'
+      }).join(' ')
+      content = `${labels} ${content}`
+      dutchContent = `${labels} ${dutchContent}`
+    }
   }
 
-  db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, twilio_sid, status)
-    VALUES (?, 'inbound', ?, ?, ?, ?, 'received')
-  `).run(conv.id, messageBody, dutchContent, language, messageSid)
+  // Build media URLs JSON for storage
+  const mediaJson = mediaItems.length > 0 ? JSON.stringify(mediaItems) : null
 
-  log('info', 'bericht', `Inkomend bericht ontvangen (${language.toUpperCase()})`, { from, sid: messageSid }, conv.id)
+  db.prepare(`
+    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, twilio_sid, status, media_url)
+    VALUES (?, 'inbound', ?, ?, ?, ?, 'received', ?)
+  `).run(conv.id, content, dutchContent, language, messageSid, mediaJson)
+
+  log('info', 'bericht', `Inkomend bericht ontvangen (${language.toUpperCase()})`, { from, sid: messageSid, media: mediaItems.length || undefined }, conv.id)
 
   return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
 }

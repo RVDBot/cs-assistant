@@ -22,6 +22,7 @@ interface Message {
   email_html?: string | null
   email_cc?: string | null
   email_attachments?: string | null
+  media_url?: string | null
 }
 
 interface Conversation {
@@ -431,6 +432,33 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                       })()}
                     </div>
                   )}
+
+                  {/* WhatsApp media (images, videos, audio) */}
+                  {msg.media_url && (() => {
+                    try {
+                      const items = JSON.parse(msg.media_url) as Array<{ url: string; contentType: string }>
+                      return (
+                        <div className="mb-2 space-y-2">
+                          {items.map((m, i) => {
+                            if (m.contentType.startsWith('image/')) {
+                              return <img key={i} src={m.url} alt="Afbeelding" className="max-w-full rounded max-h-64 object-contain" />
+                            }
+                            if (m.contentType.startsWith('video/')) {
+                              return <video key={i} src={m.url} controls className="max-w-full rounded max-h-64" />
+                            }
+                            if (m.contentType.startsWith('audio/')) {
+                              return <audio key={i} src={m.url} controls className="w-full" />
+                            }
+                            return (
+                              <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-[#00a884] text-sm underline">
+                                📎 Bijlage
+                              </a>
+                            )
+                          })}
+                        </div>
+                      )
+                    } catch { return null }
+                  })()}
 
                   {/* Message content: HTML for emails, plain text for others */}
                   {isInbound && msg.channel === 'email' && msg.email_html ? (

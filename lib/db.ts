@@ -173,6 +173,7 @@ function initSchema(db: Database.Database) {
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_html TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_cc TEXT`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN email_attachments TEXT`) } catch {}
+  try { db.exec(`ALTER TABLE messages ADD COLUMN media_url TEXT`) } catch {}
 
   // Email accounts table
   db.exec(`

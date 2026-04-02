@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle, Download, X } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
@@ -98,6 +98,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [templateVars, setTemplateVars] = useState<Record<string, string>>({})
   const [sendingTemplate, setSendingTemplate] = useState(false)
   const [windowTimeLeft, setWindowTimeLeft] = useState<number | null>(null)
+  const [lightbox, setLightbox] = useState<{ src: string; filename: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -539,8 +540,27 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                         <div className="mb-2 space-y-2">
                           {items.map((m, i) => {
                             const src = m.id ? `/api/media/${m.id}?type=${encodeURIComponent(m.contentType)}` : m.url || ''
+                            const filename = m.id || `media-${i}`
                             if (m.contentType.startsWith('image/')) {
-                              return <img key={i} src={src} alt="Afbeelding" className="max-w-full rounded max-h-64 object-contain" />
+                              return (
+                                <div key={i} className="relative group inline-block">
+                                  <img
+                                    src={src}
+                                    alt="Afbeelding"
+                                    className="max-w-full rounded max-h-64 object-contain cursor-pointer"
+                                    onClick={() => setLightbox({ src, filename })}
+                                  />
+                                  <a
+                                    href={src}
+                                    download={filename}
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-1.5 right-1.5 p-1.5 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                                    title="Download"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              )
                             }
                             if (m.contentType.startsWith('video/')) {
                               return <video key={i} src={src} controls className="max-w-full rounded max-h-64" />
@@ -843,6 +863,38 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           onClose={() => setShowOrders(false)}
           onOrderCountChange={setOrderCount}
         />
+      )}
+
+      {/* Image lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="absolute top-4 right-4 flex gap-2">
+            <a
+              href={lightbox.src}
+              download={lightbox.filename}
+              onClick={e => e.stopPropagation()}
+              className="p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+              title="Download"
+            >
+              <Download className="w-5 h-5" />
+            </a>
+            <button
+              onClick={() => setLightbox(null)}
+              className="p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <img
+            src={lightbox.src}
+            alt="Vergroot"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )

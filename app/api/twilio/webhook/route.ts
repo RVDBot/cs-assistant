@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db'
 import { detectLanguage, translateToDutch } from '@/lib/claude'
 import { log } from '@/lib/logger'
 import { validateTwilioSignature } from '@/lib/security'
+import { downloadAndStoreMedia } from '@/lib/media'
 
 const TWIML_EMPTY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
@@ -54,13 +55,20 @@ export async function POST(req: NextRequest) {
     return new NextResponse(TWIML_EMPTY, { headers: { 'Content-Type': 'text/xml' } })
   }
 
-  // Collect media attachments from Twilio
+  // Collect and download media attachments from Twilio
   const numMedia = parseInt(params.NumMedia || '0', 10)
-  const mediaItems: Array<{ url: string; contentType: string }> = []
+  const mediaItems: Array<{ id: string; contentType: string }> = []
   for (let i = 0; i < numMedia; i++) {
     const url = params[`MediaUrl${i}`]
-    const contentType = params[`MediaContentType${i}`]
-    if (url) mediaItems.push({ url, contentType: contentType || 'application/octet-stream' })
+    const contentType = params[`MediaContentType${i}`] || 'application/octet-stream'
+    if (url) {
+      try {
+        const id = await downloadAndStoreMedia(url, contentType)
+        mediaItems.push({ id, contentType })
+      } catch (e) {
+        log('error', 'media', `Media downloaden mislukt: ${url}`, { error: e instanceof Error ? e.message : String(e) })
+      }
+    }
   }
 
   // Build display content for media-only messages

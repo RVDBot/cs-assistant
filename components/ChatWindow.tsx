@@ -534,21 +534,22 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   {/* WhatsApp media (images, videos, audio) */}
                   {msg.media_url && (() => {
                     try {
-                      const items = JSON.parse(msg.media_url) as Array<{ url: string; contentType: string }>
+                      const items = JSON.parse(msg.media_url) as Array<{ id?: string; url?: string; contentType: string }>
                       return (
                         <div className="mb-2 space-y-2">
                           {items.map((m, i) => {
+                            const src = m.id ? `/api/media/${m.id}?type=${encodeURIComponent(m.contentType)}` : m.url || ''
                             if (m.contentType.startsWith('image/')) {
-                              return <img key={i} src={m.url} alt="Afbeelding" className="max-w-full rounded max-h-64 object-contain" />
+                              return <img key={i} src={src} alt="Afbeelding" className="max-w-full rounded max-h-64 object-contain" />
                             }
                             if (m.contentType.startsWith('video/')) {
-                              return <video key={i} src={m.url} controls className="max-w-full rounded max-h-64" />
+                              return <video key={i} src={src} controls className="max-w-full rounded max-h-64" />
                             }
                             if (m.contentType.startsWith('audio/')) {
-                              return <audio key={i} src={m.url} controls className="w-full" />
+                              return <audio key={i} src={src} controls className="w-full" />
                             }
                             return (
-                              <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-[#00a884] text-sm underline">
+                              <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="text-[#00a884] text-sm underline">
                                 📎 Bijlage
                               </a>
                             )

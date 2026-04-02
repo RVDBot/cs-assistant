@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle, Download, X } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle, Download, X, Image as ImageIcon } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
@@ -99,10 +99,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const [sendingTemplate, setSendingTemplate] = useState(false)
   const [windowTimeLeft, setWindowTimeLeft] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<{ src: string; filename: string } | null>(null)
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -284,17 +288,44 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
     setMerging(false)
   }
 
+  function addFiles(files: FileList | File[]) {
+    const allowed = Array.from(files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'))
+    if (allowed.length) setAttachedFiles(prev => [...prev, ...allowed])
+  }
+
   async function sendManual() {
-    if (!conversation || !manualText.trim() || sending) return
+    if (!conversation || (!manualText.trim() && !attachedFiles.length) || sending) return
     setSending(true)
+    setUploading(attachedFiles.length > 0)
     try {
+      // Upload files first
+      let media: Array<{ id: string; contentType: string }> | undefined
+      if (attachedFiles.length > 0) {
+        media = []
+        for (const file of attachedFiles) {
+          const form = new FormData()
+          form.append('file', file)
+          const uploadRes = await fetch('/api/media/upload', { method: 'POST', body: form })
+          if (!uploadRes.ok) throw new Error('Upload mislukt')
+          const uploaded = await uploadRes.json()
+          media.push({ id: uploaded.id, contentType: uploaded.contentType })
+        }
+      }
+      setUploading(false)
+
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversation.id, content: manualText.trim(), channel: sendChannel }),
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          content: manualText.trim(),
+          channel: sendChannel,
+          ...(media?.length ? { media } : {}),
+        }),
       })
       if (res.ok) {
         setManualText('')
+        setAttachedFiles([])
         onMessageSent?.()
         await load()
       }
@@ -302,6 +333,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       console.error(e)
     } finally {
       setSending(false)
+      setUploading(false)
     }
   }
 
@@ -747,37 +779,88 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
         </div>
       ) : (
         /* Normal manual send input */
-        <div className="px-4 py-3 bg-whatsapp-panel border-t border-whatsapp-border flex items-end gap-2 shrink-0">
-          <select
-            value={sendChannel}
-            onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
-            className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
-          >
-            {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
-            {conversation?.customer_email && <option value="email">Email</option>}
-          </select>
-          <textarea
-            ref={inputRef}
-            value={manualText}
-            onChange={e => setManualText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Typ een bericht..."
-            rows={1}
-            className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
-            style={{ height: 'auto' }}
-            onInput={e => {
-              const t = e.currentTarget
-              t.style.height = 'auto'
-              t.style.height = `${Math.min(t.scrollHeight, 128)}px`
-            }}
-          />
-          <button
-            onClick={sendManual}
-            disabled={sending || !manualText.trim()}
-            className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
+        <div
+          className={`bg-whatsapp-panel border-t shrink-0 transition-colors ${dragging ? 'border-whatsapp-teal bg-whatsapp-teal/5' : 'border-whatsapp-border'}`}
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={e => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
+        >
+          {/* Attached file previews */}
+          {attachedFiles.length > 0 && (
+            <div className="px-4 pt-3 flex gap-2 flex-wrap">
+              {attachedFiles.map((f, i) => (
+                <div key={i} className="relative group">
+                  {f.type.startsWith('image/') ? (
+                    <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-whatsapp-border" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg border border-whatsapp-border bg-whatsapp-input flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-whatsapp-muted" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="px-4 py-3 flex items-end gap-2">
+            <select
+              value={sendChannel}
+              onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
+              className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
+            >
+              {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
+              {conversation?.customer_email && <option value="email">Email</option>}
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={e => { if (e.target.files?.length) { addFiles(e.target.files); e.target.value = '' } }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-whatsapp-muted hover:text-whatsapp-text transition-colors shrink-0"
+              title="Foto of video toevoegen"
+            >
+              <ImageIcon className="w-5 h-5" />
+            </button>
+            <textarea
+              ref={inputRef}
+              value={manualText}
+              onChange={e => setManualText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={e => {
+                const files = Array.from(e.clipboardData.items)
+                  .filter(item => item.type.startsWith('image/'))
+                  .map(item => item.getAsFile())
+                  .filter((f): f is File => f !== null)
+                if (files.length) { addFiles(files); e.preventDefault() }
+              }}
+              placeholder={dragging ? 'Sleep hier je foto naartoe...' : 'Typ een bericht...'}
+              rows={1}
+              className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+              style={{ height: 'auto' }}
+              onInput={e => {
+                const t = e.currentTarget
+                t.style.height = 'auto'
+                t.style.height = `${Math.min(t.scrollHeight, 128)}px`
+              }}
+            />
+            <button
+              onClick={sendManual}
+              disabled={sending || (!manualText.trim() && !attachedFiles.length)}
+              className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       )}
 

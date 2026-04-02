@@ -6,9 +6,14 @@ import { log } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { conversation_id, content, channel } = body
+  const { conversation_id, content, channel, media } = body as {
+    conversation_id: number
+    content: string
+    channel?: string
+    media?: Array<{ id: string; contentType: string }>
+  }
 
-  if (!conversation_id || !content) {
+  if (!conversation_id || (!content && !media?.length)) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
@@ -47,9 +52,16 @@ export async function POST(req: NextRequest) {
       log('error', 'bericht', 'Handmatig email versturen mislukt', { error: e instanceof Error ? e.message : String(e) }, conversation_id)
     }
   } else if (conv.customer_phone) {
+    // Build public media URLs for Twilio
+    const baseUrl = db.prepare("SELECT value FROM settings WHERE key = 'base_url'").get() as { value: string } | undefined
+    const publicBase = baseUrl?.value || process.env.BASE_URL || ''
+    const mediaUrls = media?.length && publicBase
+      ? media.map(m => `${publicBase.replace(/\/$/, '')}/api/media/${m.id}?type=${encodeURIComponent(m.contentType)}`)
+      : undefined
+
     try {
-      twilioSid = await sendWhatsAppMessage(conv.customer_phone, content)
-      log('info', 'twilio', 'Handmatig bericht verstuurd via Twilio', { sid: twilioSid, to: conv.customer_phone }, conversation_id)
+      twilioSid = await sendWhatsAppMessage(conv.customer_phone, content || '', mediaUrls)
+      log('info', 'twilio', 'Handmatig bericht verstuurd via Twilio', { sid: twilioSid, to: conv.customer_phone, media: media?.length || undefined }, conversation_id)
     } catch (e) {
       log('error', 'twilio', 'Handmatig versturen via Twilio mislukt', { error: e instanceof Error ? e.message : String(e) }, conversation_id)
     }
@@ -58,14 +70,17 @@ export async function POST(req: NextRequest) {
   const sent = !!(twilioSid || emailMessageId)
   log('info', 'bericht', 'Handmatig bericht verstuurd', { demo: !sent, channel: sendChannel }, conversation_id)
 
+  const mediaJson = media?.length ? JSON.stringify(media) : null
+  const displayContent = content || (media?.length ? '📷 Afbeelding' : '')
+
   const result = db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_customer_lang, language, twilio_sid, status, channel, email_subject, email_message_id, email_account_id)
-    VALUES (?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(conversation_id, content, content, conv.detected_language, twilioSid, sent ? 'sent' : 'demo', sendChannel, emailSubject, emailMessageId, emailAccountId)
+    INSERT INTO messages (conversation_id, direction, content, content_customer_lang, language, twilio_sid, status, channel, email_subject, email_message_id, email_account_id, media_url)
+    VALUES (?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(conversation_id, displayContent, displayContent, conv.detected_language, twilioSid, sent ? 'sent' : 'demo', sendChannel, emailSubject, emailMessageId, emailAccountId, mediaJson)
 
   db.prepare(`
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?
-  `).run(content.slice(0, 100), conversation_id)
+  `).run(displayContent.slice(0, 100), conversation_id)
 
   return NextResponse.json({ id: result.lastInsertRowid, twilio_sid: twilioSid })
 }

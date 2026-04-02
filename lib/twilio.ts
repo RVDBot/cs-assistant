@@ -13,7 +13,7 @@ function getCredentials() {
   }
 }
 
-export async function sendWhatsAppMessage(to: string, body: string): Promise<string> {
+export async function sendWhatsAppMessage(to: string, body: string, mediaUrls?: string[]): Promise<string> {
   const { accountSid, authToken, phoneNumber, baseUrl } = getCredentials()
   if (!accountSid || !authToken || !phoneNumber) {
     throw new Error('Twilio credentials not configured')
@@ -30,9 +30,10 @@ export async function sendWhatsAppMessage(to: string, body: string): Promise<str
     to: toFormatted,
     body,
     ...(baseUrl ? { statusCallback: `${baseUrl.replace(/\/$/, '')}/api/twilio/status` } : {}),
+    ...(mediaUrls?.length ? { mediaUrl: mediaUrls } : {}),
   }
 
-  const message = await client.messages.create(params)
+  const message = await client.messages.create(params as Parameters<typeof client.messages.create>[0])
   return message.sid
 }
 

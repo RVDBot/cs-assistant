@@ -178,6 +178,9 @@ function initSchema(db: Database.Database) {
   // Archive column
   try { db.exec(`ALTER TABLE conversations ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+  // Manual language override flag
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN language_manual INTEGER NOT NULL DEFAULT 0`) } catch {}
+
   // WhatsApp template support
   try { db.exec(`ALTER TABLE conversations ADD COLUMN last_inbound_at DATETIME`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN template_id INTEGER`) } catch {}

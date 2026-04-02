@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Sparkles, Send, Copy, Loader2, Languages, X } from 'lucide-react'
-import { getLanguageName } from '@/lib/utils'
+import { Sparkles, Send, Copy, Loader2, Languages, X, ChevronDown } from 'lucide-react'
+import { getLanguageName, LANGUAGE_NAMES } from '@/lib/utils'
 
 interface Conversation {
   id: number
@@ -44,9 +44,10 @@ interface Props {
   onMessageSent?: () => void
   onClose?: () => void
   sendChannel?: 'whatsapp' | 'email'
+  onLanguageChange?: (lang: string) => void
 }
 
-export default function AIPanel({ conversation, onMessageSent, onClose, sendChannel }: Props) {
+export default function AIPanel({ conversation, onMessageSent, onClose, sendChannel, onLanguageChange }: Props) {
   // Per-conversation state cache: keeps answer/state when switching away and back
   const cache = useRef<Record<number, ConvState>>({})
   const convId = conversation?.id ?? null
@@ -258,9 +259,28 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             </button>
           )}
         </div>
-        <p className="text-whatsapp-muted text-xs mt-0.5">
-          Klant schrijft in: <span className="text-whatsapp-teal">{langName}</span>
-        </p>
+        <div className="flex items-center gap-1 text-whatsapp-muted text-xs mt-0.5">
+          <span>Klant schrijft in:</span>
+          <select
+            value={conversation.detected_language}
+            onChange={async (e) => {
+              const lang = e.target.value
+              await fetch(`/api/conversations/${conversation.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ detected_language: lang }),
+              })
+              onLanguageChange?.(lang)
+            }}
+            className="bg-transparent text-whatsapp-teal text-xs font-medium cursor-pointer outline-none border-none appearance-none hover:text-[#06cf9c] transition-colors pr-4 relative"
+            style={{ backgroundImage: 'none' }}
+          >
+            {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
+              <option key={code} value={code} className="bg-whatsapp-panel text-whatsapp-text">{name}</option>
+            ))}
+          </select>
+          <ChevronDown className="w-3 h-3 text-whatsapp-teal -ml-3.5 pointer-events-none" />
+        </div>
       </div>
 
       {/* Content */}

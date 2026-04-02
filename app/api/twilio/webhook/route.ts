@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
       last_inbound_at = CURRENT_TIMESTAMP
   `).run(from, content.slice(0, 100))
 
-  const conv = db.prepare('SELECT id, detected_language FROM conversations WHERE customer_phone = ?').get(from) as {
-    id: number; detected_language: string
+  const conv = db.prepare('SELECT id, detected_language, language_manual FROM conversations WHERE customer_phone = ?').get(from) as {
+    id: number; detected_language: string; language_manual: number
   }
 
   let language = conv.detected_language || 'en'
@@ -110,11 +110,20 @@ export async function POST(req: NextRequest) {
   // Only translate if there's actual text (not just media labels)
   if (messageBody) {
     try {
-      language = await detectLanguage(messageBody, conv.id)
-      dutchContent = await translateToDutch(messageBody, language, conv.id)
-      if (language !== conv.detected_language) {
-        db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
+      // Skip language detection for short messages (< 4 words) when language is already set,
+      // or when language was manually overridden
+      const wordCount = messageBody.trim().split(/\s+/).length
+      const hasExistingLang = !!conv.detected_language && conv.detected_language !== 'en'
+      const skipDetection = conv.language_manual || (hasExistingLang && wordCount < 4)
+
+      if (!skipDetection) {
+        language = await detectLanguage(messageBody, conv.id)
+        if (language !== conv.detected_language) {
+          db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
+        }
       }
+
+      dutchContent = await translateToDutch(messageBody, language, conv.id)
     } catch (e) {
       log('error', 'ai', 'Vertaling mislukt', { error: e instanceof Error ? e.message : String(e), from }, conv.id)
     }

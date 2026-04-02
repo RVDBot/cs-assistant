@@ -41,6 +41,10 @@ export default function Home() {
     setRefreshKey(k => k + 1)
   }, [])
 
+  const handleLanguageChange = useCallback((lang: string) => {
+    setConversation(prev => prev ? { ...prev, detected_language: lang } : prev)
+  }, [])
+
   function handleSelect(id: number) {
     setSelectedConvId(id)
     setConversation(null)
@@ -87,6 +91,7 @@ export default function Home() {
           conversation={conversation}
           onMessageSent={handleMessageSent}
           sendChannel={sendChannel}
+          onLanguageChange={handleLanguageChange}
         />
       </div>
 
@@ -120,6 +125,7 @@ export default function Home() {
                 onMessageSent={() => { handleMessageSent(); setShowMobileAI(false) }}
                 onClose={() => setShowMobileAI(false)}
                 sendChannel={sendChannel}
+                onLanguageChange={handleLanguageChange}
               />
             </div>
           </div>

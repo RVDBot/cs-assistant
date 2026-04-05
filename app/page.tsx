@@ -57,7 +57,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-whatsapp-dark">
+    <div className="flex h-screen overflow-hidden bg-surface-0">
 
       {/* Conversation list — full screen on mobile when mobileView==='list', fixed width on desktop */}
       <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col h-full w-full md:w-auto overflow-hidden`}>
@@ -99,7 +99,7 @@ export default function Home() {
       {mobileView === 'chat' && selectedConvId && (
         <button
           onClick={() => setShowMobileAI(true)}
-          className="md:hidden fixed bottom-24 right-4 z-40 w-14 h-14 bg-whatsapp-teal rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+          className="md:hidden fixed bottom-24 right-4 z-40 w-14 h-14 bg-accent rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
         >
           <Sparkles className="w-6 h-6 text-white" />
         </button>
@@ -112,12 +112,12 @@ export default function Home() {
           onClick={() => setShowMobileAI(false)}
         >
           <div
-            className="bg-whatsapp-panel rounded-t-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            className="bg-surface-1 rounded-t-2xl max-h-[90vh] flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-2 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-whatsapp-border rounded-full" />
+              <div className="w-10 h-1 bg-border rounded-full" />
             </div>
             <div className="flex-1 overflow-y-auto flex flex-col">
               <AIPanel

@@ -2,40 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 * {
   box-sizing: border-box;
 }
 
 body {
-  background-color: #111b21;
-  color: #e9edef;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f6f8;
+  color: #1a1d21;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #374045;
+  background: #e8eaed;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a5568;
+  background: #8b9098;
 }
 
 /* Message bubbles */
 .bubble-inbound {
-  background: #2a3942;
-  border-radius: 0 8px 8px 8px;
+  background: #ffffff;
+  border: 1px solid #eceef1;
+  border-radius: 4px 16px 16px 16px;
 }
 .bubble-outbound {
-  background: #005c4b;
-  border-radius: 8px 0 8px 8px;
+  background: #006fff;
+  color: white;
+  border-radius: 16px 4px 16px 16px;
 }
 
 /* Fade in animation */
@@ -45,6 +52,14 @@ body {
 }
 .fade-in {
   animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-row {
+  animation: fadeInUp 0.3s ease-out both;
 }
 
 /* Typing indicator */
@@ -58,12 +73,24 @@ body {
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
+/* Skeleton loading */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f1f3 25%, #f5f6f8 50%, #f0f1f3 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
 /* Email HTML content styling */
-.email-content a { color: #00a884; text-decoration: underline; }
+.email-content a { color: #006fff; text-decoration: underline; }
 .email-content table { border-collapse: collapse; width: 100%; }
-.email-content td, .email-content th { padding: 4px 8px; border: 1px solid rgba(255,255,255,0.1); }
-.email-content blockquote { border-left: 3px solid rgba(255,255,255,0.2); padding-left: 8px; margin: 4px 0; color: rgba(255,255,255,0.6); }
+.email-content td, .email-content th { padding: 4px 8px; border: 1px solid #eceef1; }
+.email-content blockquote { border-left: 3px solid #e0e2e6; padding-left: 8px; margin: 4px 0; color: #8b9098; }
 .email-content p { margin: 0.25em 0; }
 .email-content h1, .email-content h2, .email-content h3 { font-size: 1em; font-weight: 600; margin: 0.5em 0 0.25em; }
 .email-content img { max-width: 100%; height: auto; }
-.email-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }
+.email-content hr { border: none; border-top: 1px solid #eceef1; margin: 8px 0; }

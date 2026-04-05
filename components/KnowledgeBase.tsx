@@ -67,35 +67,35 @@ export default function KnowledgeBase({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-whatsapp-panel border border-whatsapp-border md:rounded-xl w-full md:w-[800px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-surface-1 border border-border md:rounded-xl w-full md:w-[800px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             {/* Mobile: back button when in detail view */}
             {mobileShowDetail && (
               <button
                 onClick={() => setSelectedSlug(null)}
-                className="md:hidden p-1 -ml-1 mr-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                className="md:hidden p-1 -ml-1 mr-1 text-text-tertiary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            <BookOpen className="w-5 h-5 text-whatsapp-teal" />
-            <h2 className="text-whatsapp-text font-semibold">
+            <BookOpen className="w-5 h-5 text-accent" />
+            <h2 className="text-text-primary font-semibold">
               {mobileShowDetail && file ? <span className="md:hidden">{file.title}</span> : null}
               <span className={mobileShowDetail ? 'hidden md:inline' : ''}>Kennisbank</span>
             </h2>
           </div>
-          <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text">
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Topic list — full width on mobile when no topic selected, sidebar on desktop */}
-          <div className={`${mobileShowDetail ? 'hidden' : 'flex'} md:flex flex-col w-full md:w-64 border-r border-whatsapp-border overflow-y-auto`}>
+          <div className={`${mobileShowDetail ? 'hidden' : 'flex'} md:flex flex-col w-full md:w-64 border-r border-border overflow-y-auto`}>
             <div className="p-3">
-              <p className="text-whatsapp-muted text-xs px-2 py-1">
+              <p className="text-text-tertiary text-xs px-2 py-1">
                 De AI schrijft automatisch in deze bestanden op basis van verzonden antwoorden.
               </p>
             </div>
@@ -103,13 +103,13 @@ export default function KnowledgeBase({ onClose }: Props) {
               <button
                 key={topic.slug}
                 onClick={() => selectTopic(topic.slug)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-left hover:bg-whatsapp-input transition-colors ${selectedSlug === topic.slug ? 'bg-whatsapp-input border-r-2 border-whatsapp-teal' : ''}`}
+                className={`w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-2 transition-colors ${selectedSlug === topic.slug ? 'bg-surface-2 border-r-2 border-accent' : ''}`}
               >
                 <div className="min-w-0">
-                  <p className="text-whatsapp-text text-sm font-medium truncate">{topic.title}</p>
-                  <p className="text-whatsapp-muted text-xs truncate">{topic.description}</p>
+                  <p className="text-text-primary text-sm font-medium truncate">{topic.title}</p>
+                  <p className="text-text-tertiary text-xs truncate">{topic.description}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-whatsapp-muted shrink-0 ml-2" />
+                <ChevronRight className="w-4 h-4 text-text-tertiary shrink-0 ml-2" />
               </button>
             ))}
           </div>
@@ -117,7 +117,7 @@ export default function KnowledgeBase({ onClose }: Props) {
           {/* Editor — full width on mobile when topic selected, flex-1 on desktop */}
           <div className={`${mobileShowDetail ? 'flex' : 'hidden'} md:flex flex-1 flex-col overflow-hidden`}>
             {!selectedSlug ? (
-              <div className="flex-1 flex items-center justify-center text-whatsapp-muted">
+              <div className="flex-1 flex items-center justify-center text-text-tertiary">
                 <div className="text-center">
                   <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">Selecteer een onderwerp</p>
@@ -125,11 +125,11 @@ export default function KnowledgeBase({ onClose }: Props) {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-whatsapp-border shrink-0">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                   <div>
-                    <h3 className="hidden md:block text-whatsapp-text font-medium text-sm">{file?.title}</h3>
+                    <h3 className="hidden md:block text-text-primary font-medium text-sm">{file?.title}</h3>
                     {file?.updatedAt && (
-                      <p className="text-whatsapp-muted text-xs">
+                      <p className="text-text-tertiary text-xs">
                         Bijgewerkt: {new Date(file.updatedAt).toLocaleString('nl-NL')}
                       </p>
                     )}
@@ -137,7 +137,7 @@ export default function KnowledgeBase({ onClose }: Props) {
                   <button
                     onClick={save}
                     disabled={saving || !hasChanges}
-                    className="flex items-center gap-1.5 bg-whatsapp-teal disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                    className="flex items-center gap-1.5 bg-accent disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-accent-hover transition-colors"
                   >
                     {saving ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -154,7 +154,7 @@ export default function KnowledgeBase({ onClose }: Props) {
                 <textarea
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
-                  className="flex-1 bg-[#1a2529] text-whatsapp-text text-sm p-4 outline-none resize-none font-mono leading-relaxed placeholder:text-whatsapp-muted"
+                  className="flex-1 bg-surface-0 text-text-primary text-sm p-4 outline-none resize-none font-mono leading-relaxed placeholder:text-text-tertiary"
                   placeholder="Dit bestand is leeg. De AI schrijft hier automatisch in zodra er relevante gesprekken zijn gevoerd. Je kunt ook handmatig informatie toevoegen in Markdown-formaat."
                   spellCheck={false}
                 />

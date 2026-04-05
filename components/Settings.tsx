@@ -21,7 +21,7 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="text-whatsapp-muted text-xs font-medium">{label}</label>
+      <label htmlFor={id} className="text-text-tertiary text-xs font-medium">{label}</label>
       <div className="relative">
         <input
           id={id}
@@ -29,13 +29,13 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted pr-10"
+          className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary pr-10"
         />
         {onToggle && (
           <button
             type="button"
             onClick={onToggle}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-whatsapp-muted hover:text-whatsapp-text"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
           >
             {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -97,25 +97,25 @@ function NotificationSettings() {
   return (
     <div className="space-y-3">
       {!supported && (
-        <p className="text-whatsapp-muted text-xs">Je browser ondersteunt geen meldingen.</p>
+        <p className="text-text-tertiary text-xs">Je browser ondersteunt geen meldingen.</p>
       )}
       {supported && permission === 'granted' && (
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {enabled ? <Bell className="w-4 h-4 text-whatsapp-teal" /> : <BellOff className="w-4 h-4 text-whatsapp-muted" />}
-              <span className="text-whatsapp-text text-sm">{enabled ? 'Meldingen aan' : 'Meldingen uit'}</span>
+              {enabled ? <Bell className="w-4 h-4 text-accent" /> : <BellOff className="w-4 h-4 text-text-tertiary" />}
+              <span className="text-text-primary text-sm">{enabled ? 'Meldingen aan' : 'Meldingen uit'}</span>
             </div>
             <button
               onClick={toggle}
-              className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-whatsapp-teal' : 'bg-whatsapp-border'}`}
+              className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-accent' : 'bg-border'}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'left-5' : 'left-0.5'}`} />
             </button>
           </div>
           <button
             onClick={sendTest}
-            className="text-xs text-whatsapp-teal hover:underline"
+            className="text-xs text-accent hover:underline"
           >
             Stuur testmelding
           </button>
@@ -124,16 +124,16 @@ function NotificationSettings() {
       {supported && permission === 'default' && (
         <button
           onClick={requestPerm}
-          className="flex items-center gap-2 text-sm bg-whatsapp-teal text-white px-3 py-1.5 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+          className="flex items-center gap-2 text-sm bg-accent text-white px-3 py-1.5 rounded-lg hover:bg-accent-hover transition-colors"
         >
           <Bell className="w-4 h-4" />
           Meldingen inschakelen
         </button>
       )}
       {supported && permission === 'denied' && (
-        <p className="text-whatsapp-muted text-xs">Meldingen zijn geblokkeerd door je browser. Wijzig dit in je browserinstellingen.</p>
+        <p className="text-text-tertiary text-xs">Meldingen zijn geblokkeerd door je browser. Wijzig dit in je browserinstellingen.</p>
       )}
-      <p className="text-whatsapp-muted text-[11px]">
+      <p className="text-text-tertiary text-[11px]">
         Status: {!supported ? 'niet ondersteund' : permission === 'granted' ? 'toegestaan' : permission === 'denied' ? 'geblokkeerd' : 'niet ingesteld'}
       </p>
     </div>
@@ -290,50 +290,50 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-full max-w-[580px] max-h-[85vh] mx-4 md:mx-0 flex flex-col shadow-2xl">
+      <div className="bg-surface-1 border border-border rounded-xl w-full max-w-[580px] max-h-[85vh] mx-4 md:mx-0 flex flex-col shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             {/* Mobile: back button when inside a tab */}
             {activeTab && (
               <button
                 onClick={() => setActiveTab(null)}
-                className="md:hidden p-1 -ml-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                className="md:hidden p-1 -ml-1 text-text-tertiary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            <h2 className="text-whatsapp-text font-semibold">
+            <h2 className="text-text-primary font-semibold">
               {activeTab ? <span className="md:hidden">{activeTabLabel}</span> : null}
               <span className={activeTab ? 'hidden md:inline' : ''}>Instellingen</span>
             </h2>
           </div>
-          <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text">
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-whatsapp-teal" />
+            <Loader2 className="w-6 h-6 animate-spin text-accent" />
           </div>
         ) : (
           <div className="flex-1 flex min-h-0">
             {/* Tab sidebar — always visible on desktop, only when no tab selected on mobile */}
-            <div className={`${activeTab ? 'hidden md:block' : ''} w-full md:w-[160px] shrink-0 md:border-r border-whatsapp-border py-2 overflow-y-auto`}>
+            <div className={`${activeTab ? 'hidden md:block' : ''} w-full md:w-[160px] shrink-0 md:border-r border-border py-2 overflow-y-auto`}>
               {TABS.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-2.5 px-4 py-3 md:py-2.5 text-sm transition-colors ${
                     contentTab === tab.id
-                      ? 'md:text-whatsapp-teal md:bg-whatsapp-teal/10 md:border-r-2 md:border-whatsapp-teal text-whatsapp-text'
-                      : 'text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-input'
+                      ? 'md:text-accent md:bg-accent-subtle md:border-r-2 md:border-accent text-text-primary'
+                      : 'text-text-tertiary hover:text-text-primary hover:bg-surface-2'
                   }`}
                 >
                   {tab.icon}
                   <span className="flex-1 text-left">{tab.label}</span>
-                  <ChevronRight className="w-4 h-4 md:hidden text-whatsapp-muted" />
+                  <ChevronRight className="w-4 h-4 md:hidden text-text-tertiary" />
                 </button>
               ))}
             </div>
@@ -345,12 +345,12 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               {contentTab === 'whatsapp' && (
                 <>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-whatsapp-text font-medium text-sm">Twilio WhatsApp</h3>
+                    <h3 className="text-text-primary font-medium text-sm">Twilio WhatsApp</h3>
                     <a
                       href="https://console.twilio.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-whatsapp-teal text-xs hover:underline"
+                      className="flex items-center gap-1 text-accent text-xs hover:underline"
                     >
                       Twilio Console <ExternalLink className="w-3 h-3" />
                     </a>
@@ -385,33 +385,33 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     placeholder="https://jouw-domein.com"
                   />
                   <div className="space-y-1.5">
-                    <label className="text-whatsapp-muted text-xs font-medium">Webhook URL (kopieer naar Twilio)</label>
-                    <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2">
-                      <code className="text-whatsapp-teal text-xs flex-1 truncate">{webhookUrl}</code>
+                    <label className="text-text-tertiary text-xs font-medium">Webhook URL (kopieer naar Twilio)</label>
+                    <div className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 py-2">
+                      <code className="text-accent text-xs flex-1 truncate">{webhookUrl}</code>
                       <button
                         onClick={() => navigator.clipboard.writeText(webhookUrl)}
-                        className="text-whatsapp-muted hover:text-whatsapp-text text-xs shrink-0"
+                        className="text-text-tertiary hover:text-text-primary text-xs shrink-0"
                       >
                         Kopieer
                       </button>
                     </div>
-                    <p className="text-whatsapp-muted text-[11px]">Stel deze URL in als &quot;Incoming Message&quot; webhook in de Twilio WhatsApp Sandbox of je actieve nummer.</p>
+                    <p className="text-text-tertiary text-[11px]">Stel deze URL in als &quot;Incoming Message&quot; webhook in de Twilio WhatsApp Sandbox of je actieve nummer.</p>
                   </div>
                   {settings.base_url && (
                     <div className="space-y-1.5">
-                      <label className="text-whatsapp-muted text-xs font-medium">Status Callback URL (voor bezorgd/gelezen)</label>
-                      <div className="flex items-center gap-2 bg-whatsapp-input rounded-lg px-3 py-2">
-                        <code className="text-whatsapp-teal text-xs flex-1 truncate">
+                      <label className="text-text-tertiary text-xs font-medium">Status Callback URL (voor bezorgd/gelezen)</label>
+                      <div className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 py-2">
+                        <code className="text-accent text-xs flex-1 truncate">
                           {settings.base_url.replace(/\/$/, '')}/api/twilio/status
                         </code>
                         <button
                           onClick={() => navigator.clipboard.writeText(`${settings.base_url.replace(/\/$/, '')}/api/twilio/status`)}
-                          className="text-whatsapp-muted hover:text-whatsapp-text text-xs shrink-0"
+                          className="text-text-tertiary hover:text-text-primary text-xs shrink-0"
                         >
                           Kopieer
                         </button>
                       </div>
-                      <p className="text-whatsapp-muted text-[11px]">Wordt automatisch meegestuurd bij elk uitgaand bericht voor bezorgd/gelezen status.</p>
+                      <p className="text-text-tertiary text-[11px]">Wordt automatisch meegestuurd bij elk uitgaand bericht voor bezorgd/gelezen status.</p>
                     </div>
                   )}
                 </>
@@ -423,10 +423,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                   {editingTemplate ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setEditingTemplate(null)} className="text-whatsapp-muted hover:text-whatsapp-text">
+                        <button onClick={() => setEditingTemplate(null)} className="text-text-tertiary hover:text-text-primary">
                           <ArrowLeft className="w-4 h-4" />
                         </button>
-                        <h3 className="text-whatsapp-text font-medium text-sm">
+                        <h3 className="text-text-primary font-medium text-sm">
                           {editingTemplate.id ? 'Template bewerken' : 'Nieuwe template'}
                         </h3>
                       </div>
@@ -437,20 +437,20 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       {/* Variables */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-whatsapp-muted text-xs font-medium">Variabelen</p>
+                          <p className="text-text-tertiary text-xs font-medium">Variabelen</p>
                           <button
                             onClick={() => setEditingTemplate(p => p && ({
                               ...p,
                               variables: [...p.variables, { key: String(p.variables.length + 1), label: '' }],
                             }))}
-                            className="flex items-center gap-1 text-xs text-whatsapp-teal hover:underline"
+                            className="flex items-center gap-1 text-xs text-accent hover:underline"
                           >
                             <Plus className="w-3 h-3" /> Toevoegen
                           </button>
                         </div>
                         {editingTemplate.variables.map((v, i) => (
                           <div key={i} className="flex items-center gap-2">
-                            <span className="text-whatsapp-muted text-xs w-8 shrink-0 text-center">{`{{${v.key}}}`}</span>
+                            <span className="text-text-tertiary text-xs w-8 shrink-0 text-center">{`{{${v.key}}}`}</span>
                             <input
                               value={v.label}
                               onChange={e => setEditingTemplate(p => {
@@ -460,7 +460,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                 return { ...p, variables: vars }
                               })}
                               placeholder="Label (bijv. Klantnaam)"
-                              className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                              className="flex-1 bg-surface-2 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                             />
                             {editingTemplate.variables.length > 1 && (
                               <button
@@ -468,7 +468,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                   ...p,
                                   variables: p.variables.filter((_, j) => j !== i),
                                 }))}
-                                className="text-whatsapp-muted hover:text-red-400 p-1"
+                                className="text-text-tertiary hover:text-danger p-1"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -480,19 +480,19 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       {/* Variants */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-whatsapp-muted text-xs font-medium">Taalvarianten</p>
+                          <p className="text-text-tertiary text-xs font-medium">Taalvarianten</p>
                           <button
                             onClick={() => setEditingTemplate(p => p && ({
                               ...p,
                               variants: [...p.variants, { language: '', content_sid: '', preview: '' }],
                             }))}
-                            className="flex items-center gap-1 text-xs text-whatsapp-teal hover:underline"
+                            className="flex items-center gap-1 text-xs text-accent hover:underline"
                           >
                             <Plus className="w-3 h-3" /> Variant toevoegen
                           </button>
                         </div>
                         {editingTemplate.variants.map((v, i) => (
-                          <div key={i} className="bg-whatsapp-input rounded-lg p-3 space-y-2">
+                          <div key={i} className="bg-surface-2 rounded-lg p-3 space-y-2">
                             <div className="flex items-center gap-2">
                               <select
                                 value={v.language}
@@ -502,7 +502,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                   variants[i] = { ...variants[i], language: e.target.value }
                                   return { ...p, variants }
                                 })}
-                                className="bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal"
+                                className="bg-surface-1 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent"
                               >
                                 <option value="">Kies taal...</option>
                                 <option value="nl">Nederlands</option>
@@ -522,7 +522,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     ...p,
                                     variants: p.variants.filter((_, j) => j !== i),
                                   }))}
-                                  className="ml-auto text-whatsapp-muted hover:text-red-400 p-1"
+                                  className="ml-auto text-text-tertiary hover:text-danger p-1"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>
@@ -537,7 +537,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                 return { ...p, variants }
                               })}
                               placeholder="Content SID (HXxxxxx)"
-                              className="w-full bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                              className="w-full bg-surface-1 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                             />
                             <textarea
                               value={v.preview}
@@ -549,7 +549,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                               })}
                               placeholder="Preview tekst met {{1}} placeholders"
                               rows={2}
-                              className="w-full bg-whatsapp-panel text-whatsapp-text text-sm px-2 py-1.5 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none"
+                              className="w-full bg-surface-1 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none"
                             />
                           </div>
                         ))}
@@ -572,14 +572,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                             setTemplateSaving(false)
                           }}
                           disabled={templateSaving}
-                          className="flex items-center gap-2 bg-whatsapp-teal text-white text-sm px-4 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors disabled:opacity-50"
+                          className="flex items-center gap-2 bg-accent text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
                         >
                           {templateSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                           {editingTemplate.id ? 'Bijwerken' : 'Toevoegen'}
                         </button>
                         <button
                           onClick={() => setEditingTemplate(null)}
-                          className="text-sm text-whatsapp-muted hover:text-whatsapp-text px-4 py-2 rounded-lg hover:bg-whatsapp-input transition-colors"
+                          className="text-sm text-text-tertiary hover:text-text-primary px-4 py-2 rounded-lg hover:bg-surface-2 transition-colors"
                         >
                           Annuleren
                         </button>
@@ -588,23 +588,23 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                   ) : (
                     <>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-whatsapp-text font-medium text-sm">WhatsApp Templates</h3>
+                        <h3 className="text-text-primary font-medium text-sm">WhatsApp Templates</h3>
                         <button
                           onClick={() => setEditingTemplate({ ...emptyTemplate })}
-                          className="flex items-center gap-1.5 text-xs text-whatsapp-teal hover:underline"
+                          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Template toevoegen
                         </button>
                       </div>
-                      <p className="text-whatsapp-muted text-[11px]">Beheer goedgekeurde WhatsApp templates voor berichten buiten het 24-uurs venster.</p>
+                      <p className="text-text-tertiary text-[11px]">Beheer goedgekeurde WhatsApp templates voor berichten buiten het 24-uurs venster.</p>
 
                       {templates.length === 0 ? (
-                        <div className="bg-whatsapp-input rounded-lg p-4 text-center">
-                          <p className="text-whatsapp-muted text-sm">Geen templates geconfigureerd</p>
+                        <div className="bg-surface-2 rounded-lg p-4 text-center">
+                          <p className="text-text-tertiary text-sm">Geen templates geconfigureerd</p>
                           <button
                             onClick={() => setEditingTemplate({ ...emptyTemplate })}
-                            className="mt-2 text-xs text-whatsapp-teal hover:underline"
+                            className="mt-2 text-xs text-accent hover:underline"
                           >
                             Voeg je eerste template toe
                           </button>
@@ -612,11 +612,11 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       ) : (
                         <div className="space-y-2">
                           {templates.map(tpl => (
-                            <div key={tpl.id} className="bg-whatsapp-input rounded-lg p-3 space-y-1">
+                            <div key={tpl.id} className="bg-surface-2 rounded-lg p-3 space-y-1">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <span className="text-whatsapp-text text-sm font-medium">{tpl.name}</span>
-                                  {tpl.description && <p className="text-whatsapp-muted text-xs">{tpl.description}</p>}
+                                  <span className="text-text-primary text-sm font-medium">{tpl.name}</span>
+                                  {tpl.description && <p className="text-text-tertiary text-xs">{tpl.description}</p>}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <button
@@ -631,7 +631,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                         preview: v.preview || '',
                                       })),
                                     })}
-                                    className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                                    className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
                                     title="Bewerken"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -642,14 +642,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       await fetch(`/api/templates/${tpl.id}`, { method: 'DELETE' })
                                       await fetchTemplates()
                                     }}
-                                    className="p-1.5 text-whatsapp-muted hover:text-red-400 transition-colors"
+                                    className="p-1.5 text-text-tertiary hover:text-danger transition-colors"
                                     title="Verwijderen"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs text-whatsapp-muted">
+                              <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
                                 <span>{tpl.variants.length} taal{tpl.variants.length !== 1 ? 'varianten' : 'variant'}</span>
                                 <span>&middot;</span>
                                 <span>{tpl.variants.map((v: { language: string }) => v.language.toUpperCase()).join(', ')}</span>
@@ -670,10 +670,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     /* Account edit/create form */
                     <>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }} className="text-whatsapp-muted hover:text-whatsapp-text">
+                        <button onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }} className="text-text-tertiary hover:text-text-primary">
                           <ArrowLeft className="w-4 h-4" />
                         </button>
-                        <h3 className="text-whatsapp-text font-medium text-sm">
+                        <h3 className="text-text-primary font-medium text-sm">
                           {editingAccount.id ? 'Account bewerken' : 'Nieuw account'}
                         </h3>
                       </div>
@@ -682,17 +682,17 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       <Field label="Afzendernaam" id="acc_from_name" value={editingAccount.from_name} onChange={v => setEditingAccount(p => p && ({ ...p, from_name: v }))} placeholder="SpeedRope Shop" />
 
                       <div className="flex items-center justify-between">
-                        <span className="text-whatsapp-muted text-xs font-medium">Actief</span>
+                        <span className="text-text-tertiary text-xs font-medium">Actief</span>
                         <button
                           onClick={() => setEditingAccount(p => p && ({ ...p, enabled: p.enabled ? 0 : 1 }))}
-                          className={`relative w-10 h-5 rounded-full transition-colors ${editingAccount.enabled ? 'bg-whatsapp-teal' : 'bg-whatsapp-border'}`}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${editingAccount.enabled ? 'bg-accent' : 'bg-border'}`}
                         >
                           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${editingAccount.enabled ? 'left-5' : 'left-0.5'}`} />
                         </button>
                       </div>
 
                       <div className="space-y-3">
-                        <p className="text-whatsapp-muted text-xs font-medium">IMAP (inkomend)</p>
+                        <p className="text-text-tertiary text-xs font-medium">IMAP (inkomend)</p>
                         <div className="grid grid-cols-2 gap-3">
                           <Field label="Host" id="acc_imap_host" value={editingAccount.imap_host} onChange={v => setEditingAccount(p => p && ({ ...p, imap_host: v }))} placeholder="imap.gmail.com" />
                           <Field label="Poort" id="acc_imap_port" value={String(editingAccount.imap_port)} onChange={v => setEditingAccount(p => p && ({ ...p, imap_port: parseInt(v) || 993 }))} placeholder="993" />
@@ -702,7 +702,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       </div>
 
                       <div className="space-y-3">
-                        <p className="text-whatsapp-muted text-xs font-medium">SMTP (uitgaand)</p>
+                        <p className="text-text-tertiary text-xs font-medium">SMTP (uitgaand)</p>
                         <div className="grid grid-cols-2 gap-3">
                           <Field label="Host" id="acc_smtp_host" value={editingAccount.smtp_host} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_host: v }))} placeholder="smtp.gmail.com" />
                           <Field label="Poort" id="acc_smtp_port" value={String(editingAccount.smtp_port)} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_port: parseInt(v) || 587 }))} placeholder="587" />
@@ -726,14 +726,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                             setShowImapPass(false)
                             setShowSmtpPass(false)
                           }}
-                          className="flex items-center gap-2 bg-whatsapp-teal text-white text-sm px-4 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                          className="flex items-center gap-2 bg-accent text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors"
                         >
                           <Save className="w-3.5 h-3.5" />
                           {editingAccount.id ? 'Bijwerken' : 'Toevoegen'}
                         </button>
                         <button
                           onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }}
-                          className="text-sm text-whatsapp-muted hover:text-whatsapp-text px-4 py-2 rounded-lg hover:bg-whatsapp-input transition-colors"
+                          className="text-sm text-text-tertiary hover:text-text-primary px-4 py-2 rounded-lg hover:bg-surface-2 transition-colors"
                         >
                           Annuleren
                         </button>
@@ -743,23 +743,23 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     /* Account list */
                     <>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-whatsapp-text font-medium text-sm">Email Accounts</h3>
+                        <h3 className="text-text-primary font-medium text-sm">Email Accounts</h3>
                         <button
                           onClick={() => setEditingAccount({ ...emptyAccount })}
-                          className="flex items-center gap-1.5 text-xs text-whatsapp-teal hover:underline"
+                          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Account toevoegen
                         </button>
                       </div>
-                      <p className="text-whatsapp-muted text-[11px]">Koppel meerdere email accounts (bijv. Google Workspace en Proton Mail).</p>
+                      <p className="text-text-tertiary text-[11px]">Koppel meerdere email accounts (bijv. Google Workspace en Proton Mail).</p>
 
                       {emailAccounts.length === 0 ? (
-                        <div className="bg-whatsapp-input rounded-lg p-4 text-center">
-                          <p className="text-whatsapp-muted text-sm">Geen email accounts geconfigureerd</p>
+                        <div className="bg-surface-2 rounded-lg p-4 text-center">
+                          <p className="text-text-tertiary text-sm">Geen email accounts geconfigureerd</p>
                           <button
                             onClick={() => setEditingAccount({ ...emptyAccount })}
-                            className="mt-2 text-xs text-whatsapp-teal hover:underline"
+                            className="mt-2 text-xs text-accent hover:underline"
                           >
                             Voeg je eerste account toe
                           </button>
@@ -767,12 +767,12 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       ) : (
                         <div className="space-y-2">
                           {emailAccounts.map(acc => (
-                            <div key={acc.id} className="bg-whatsapp-input rounded-lg p-3 space-y-2">
+                            <div key={acc.id} className="bg-surface-2 rounded-lg p-3 space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4 text-whatsapp-muted" />
-                                  <span className="text-whatsapp-text text-sm font-medium">{acc.name}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${acc.enabled ? 'bg-green-500/20 text-green-400' : 'bg-whatsapp-border text-whatsapp-muted'}`}>
+                                  <Mail className="w-4 h-4 text-text-tertiary" />
+                                  <span className="text-text-primary text-sm font-medium">{acc.name}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${acc.enabled ? 'bg-green-500/20 text-green-400' : 'bg-border text-text-tertiary'}`}>
                                     {acc.enabled ? 'Actief' : 'Inactief'}
                                   </span>
                                 </div>
@@ -783,7 +783,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       setShowImapPass(false)
                                       setShowSmtpPass(false)
                                     }}
-                                    className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                                    className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
                                     title="Bewerken"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -799,14 +799,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       await fetchEmailAccounts()
                                       setEmailTestResult(null)
                                     }}
-                                    className="p-1.5 text-whatsapp-muted hover:text-red-400 transition-colors"
+                                    className="p-1.5 text-text-tertiary hover:text-danger transition-colors"
                                     title="Verwijderen"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-whatsapp-muted text-xs">{acc.imap_user}</p>
+                              <p className="text-text-tertiary text-xs">{acc.imap_user}</p>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={async () => {
@@ -826,7 +826,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     setEmailTesting(null)
                                   }}
                                   disabled={emailTesting === acc.id}
-                                  className="flex items-center gap-1.5 text-xs bg-whatsapp-panel text-whatsapp-text px-2.5 py-1 rounded hover:bg-whatsapp-border transition-colors disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-xs bg-surface-1 text-text-primary px-2.5 py-1 rounded hover:bg-border transition-colors disabled:opacity-50"
                                 >
                                   {emailTesting === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                                   Test
@@ -840,21 +840,21 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     })
                                     await fetchEmailAccounts()
                                   }}
-                                  className="text-xs text-whatsapp-muted hover:text-whatsapp-text"
+                                  className="text-xs text-text-tertiary hover:text-text-primary"
                                 >
                                   {acc.enabled ? 'Deactiveren' : 'Activeren'}
                                 </button>
                                 {emailTestResult && emailTestResult.accountId === acc.id && (
                                   <div className="text-xs">
-                                    <span className={emailTestResult.imap ? 'text-green-400' : 'text-red-400'}>
+                                    <span className={emailTestResult.imap ? 'text-green-400' : 'text-danger'}>
                                       IMAP: {emailTestResult.imap ? '✓' : '✗'}
                                     </span>
                                     {' · '}
-                                    <span className={emailTestResult.smtp ? 'text-green-400' : 'text-red-400'}>
+                                    <span className={emailTestResult.smtp ? 'text-green-400' : 'text-danger'}>
                                       SMTP: {emailTestResult.smtp ? '✓' : '✗'}
                                     </span>
                                     {emailTestResult.errors.length > 0 && (
-                                      <span className="text-red-400 ml-1">{emailTestResult.errors.join(', ')}</span>
+                                      <span className="text-danger ml-1">{emailTestResult.errors.join(', ')}</span>
                                     )}
                                   </div>
                                 )}
@@ -872,12 +872,12 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               {contentTab === 'claude' && (
                 <>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-whatsapp-text font-medium text-sm">Anthropic Claude</h3>
+                    <h3 className="text-text-primary font-medium text-sm">Anthropic Claude</h3>
                     <a
                       href="https://console.anthropic.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-whatsapp-teal text-xs hover:underline"
+                      className="flex items-center gap-1 text-accent text-xs hover:underline"
                     >
                       Anthropic Console <ExternalLink className="w-3 h-3" />
                     </a>
@@ -892,11 +892,11 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     placeholder="sk-ant-..."
                   />
                   <div className="space-y-1.5">
-                    <label className="text-whatsapp-muted text-xs font-medium">AI Model</label>
+                    <label className="text-text-tertiary text-xs font-medium">AI Model</label>
                     <select
                       value={settings.claude_model}
                       onChange={e => setSettings(p => ({ ...p, claude_model: e.target.value }))}
-                      className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal"
+                      className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent"
                     >
                       {CLAUDE_MODELS.map(m => (
                         <option key={m.id} value={m.id}>{m.label}</option>
@@ -904,43 +904,43 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     </select>
                   </div>
 
-                  <hr className="border-whatsapp-border" />
+                  <hr className="border-border" />
 
                   {/* Token Usage */}
-                  <h3 className="text-whatsapp-text font-medium text-sm flex items-center gap-2">
+                  <h3 className="text-text-primary font-medium text-sm flex items-center gap-2">
                     <BarChart3 className="w-4 h-4" />
                     Tokengebruik
                   </h3>
                   {tokenStats && (tokenStats.total_input > 0 || tokenStats.total_output > 0) ? (
                     <>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
-                          <p className="text-whatsapp-teal text-sm font-mono font-semibold">{tokenStats.total_input.toLocaleString('nl-NL')}</p>
-                          <p className="text-whatsapp-muted text-[11px] mt-0.5">Invoer tokens</p>
+                        <div className="bg-surface-2 rounded-lg px-3 py-2 text-center">
+                          <p className="text-accent text-sm font-mono font-semibold">{tokenStats.total_input.toLocaleString('nl-NL')}</p>
+                          <p className="text-text-tertiary text-[11px] mt-0.5">Invoer tokens</p>
                         </div>
-                        <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
-                          <p className="text-whatsapp-teal text-sm font-mono font-semibold">{tokenStats.total_output.toLocaleString('nl-NL')}</p>
-                          <p className="text-whatsapp-muted text-[11px] mt-0.5">Uitvoer tokens</p>
+                        <div className="bg-surface-2 rounded-lg px-3 py-2 text-center">
+                          <p className="text-accent text-sm font-mono font-semibold">{tokenStats.total_output.toLocaleString('nl-NL')}</p>
+                          <p className="text-text-tertiary text-[11px] mt-0.5">Uitvoer tokens</p>
                         </div>
-                        <div className="bg-whatsapp-input rounded-lg px-3 py-2 text-center">
-                          <p className="text-whatsapp-teal text-sm font-mono font-semibold">{(tokenStats.total_input + tokenStats.total_output).toLocaleString('nl-NL')}</p>
-                          <p className="text-whatsapp-muted text-[11px] mt-0.5">Totaal</p>
+                        <div className="bg-surface-2 rounded-lg px-3 py-2 text-center">
+                          <p className="text-accent text-sm font-mono font-semibold">{(tokenStats.total_input + tokenStats.total_output).toLocaleString('nl-NL')}</p>
+                          <p className="text-text-tertiary text-[11px] mt-0.5">Totaal</p>
                         </div>
                       </div>
                       <div className="space-y-1">
                         {tokenStats.by_type.map(row => (
                           <div key={row.call_type} className="flex items-center justify-between text-xs px-1">
-                            <span className="text-whatsapp-muted">{row.label}</span>
-                            <span className="text-whatsapp-text font-mono">
+                            <span className="text-text-tertiary">{row.label}</span>
+                            <span className="text-text-primary font-mono">
                               {(row.input_tokens + row.output_tokens).toLocaleString('nl-NL')}
-                              <span className="text-whatsapp-muted ml-1">({row.calls}×)</span>
+                              <span className="text-text-tertiary ml-1">({row.calls}×)</span>
                             </span>
                           </div>
                         ))}
                       </div>
                     </>
                   ) : (
-                    <p className="text-whatsapp-muted text-xs">Nog geen tokengebruik geregistreerd.</p>
+                    <p className="text-text-tertiary text-xs">Nog geen tokengebruik geregistreerd.</p>
                   )}
                 </>
               )}
@@ -948,7 +948,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               {/* WooCommerce tab */}
               {contentTab === 'woocommerce' && (
                 <>
-                  <h3 className="text-whatsapp-text font-medium text-sm">WooCommerce</h3>
+                  <h3 className="text-text-primary font-medium text-sm">WooCommerce</h3>
                   <Field
                     label="Winkel URL"
                     id="wc_store_url"
@@ -979,14 +979,14 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               {contentTab === 'general' && (
                 <>
                   <section className="space-y-4">
-                    <h3 className="text-whatsapp-text font-medium text-sm">Meldingen</h3>
+                    <h3 className="text-text-primary font-medium text-sm">Meldingen</h3>
                     <NotificationSettings />
                   </section>
 
-                  <hr className="border-whatsapp-border" />
+                  <hr className="border-border" />
 
                   <section className="space-y-4">
-                    <h3 className="text-whatsapp-text font-medium text-sm">Beveiliging</h3>
+                    <h3 className="text-text-primary font-medium text-sm">Beveiliging</h3>
                     <Field
                       label="App wachtwoord"
                       id="app_password"
@@ -996,7 +996,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       onToggle={() => setShowPassword(!showPassword)}
                       placeholder="Stel een wachtwoord in"
                     />
-                    <p className="text-whatsapp-muted text-[11px]">Stel dit in om de app te beveiligen. Laat leeg om beveiliging uit te schakelen.</p>
+                    <p className="text-text-tertiary text-[11px]">Stel dit in om de app te beveiligen. Laat leeg om beveiliging uit te schakelen.</p>
                   </section>
                 </>
               )}
@@ -1006,18 +1006,18 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
         )}
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-whatsapp-border flex justify-between">
+        <div className="px-5 py-4 border-t border-border flex justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onOpenLogs}
-              className="flex items-center gap-2 text-whatsapp-muted hover:text-whatsapp-text text-sm transition-colors"
+              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary text-sm transition-colors"
             >
               <ScrollText className="w-4 h-4" />
               Logs
             </button>
             <button
               onClick={logout}
-              className="flex items-center gap-2 text-whatsapp-muted hover:text-red-400 text-sm transition-colors"
+              className="flex items-center gap-2 text-text-tertiary hover:text-danger text-sm transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Uitloggen
@@ -1026,7 +1026,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
           <button
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-2 bg-whatsapp-teal disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+            className="flex items-center gap-2 bg-accent disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

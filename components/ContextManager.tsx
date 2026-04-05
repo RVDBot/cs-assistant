@@ -136,22 +136,22 @@ export default function ContextManager({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-[600px] max-h-[80vh] flex flex-col shadow-2xl">
+      <div className="bg-surface-1 border border-border rounded-2xl w-[600px] max-h-[80vh] flex flex-col shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border">
-          <h2 className="text-whatsapp-text font-semibold">Context Beheren</h2>
-          <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-text-primary font-semibold">Context Beheren</h2>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-whatsapp-border">
+        <div className="flex border-b border-border">
           {(['files', 'links', 'tone'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === t ? 'text-whatsapp-teal border-b-2 border-whatsapp-teal' : 'text-whatsapp-muted hover:text-whatsapp-text'}`}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === t ? 'text-accent border-b-2 border-accent' : 'text-text-tertiary hover:text-text-primary'}`}
             >
               {t === 'files' ? 'Bestanden' : t === 'links' ? 'Weblinks' : 'Tone of Voice'}
             </button>
@@ -161,7 +161,7 @@ export default function ContextManager({ onClose }: Props) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg px-3 py-2 text-red-400 text-xs">
+            <div className="bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2 text-danger text-xs">
               {error}
             </div>
           )}
@@ -169,25 +169,25 @@ export default function ContextManager({ onClose }: Props) {
           {/* Files tab */}
           {tab === 'files' && (
             <div className="space-y-4">
-              <p className="text-whatsapp-muted text-xs">Upload bestanden die de AI als context gebruikt bij het beantwoorden van vragen. (.txt, .md, .csv, .json)</p>
+              <p className="text-text-tertiary text-xs">Upload bestanden die de AI als context gebruikt bij het beantwoorden van vragen. (.txt, .md, .csv, .json)</p>
               <input ref={fileInputRef} type="file" accept=".txt,.md,.csv,.json" onChange={uploadFile} className="hidden" />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 border-2 border-dashed border-whatsapp-border rounded-lg w-full py-4 text-whatsapp-muted hover:border-whatsapp-teal hover:text-whatsapp-teal transition-colors text-sm justify-center"
+                className="flex items-center gap-2 border-2 border-dashed border-border rounded-lg w-full py-4 text-text-tertiary hover:border-accent hover:text-accent transition-colors text-sm justify-center"
               >
                 <Upload className="w-4 h-4" />
                 Bestand uploaden
               </button>
               <div className="space-y-2">
-                {files.length === 0 && <p className="text-whatsapp-muted text-sm text-center py-4">Geen bestanden</p>}
+                {files.length === 0 && <p className="text-text-tertiary text-sm text-center py-4">Geen bestanden</p>}
                 {files.map(f => (
-                  <div key={f.id} className="flex items-center gap-3 bg-whatsapp-input rounded-lg px-3 py-2.5">
-                    <FileText className="w-4 h-4 text-whatsapp-teal shrink-0" />
+                  <div key={f.id} className="flex items-center gap-3 bg-surface-2 rounded-lg px-3 py-2.5">
+                    <FileText className="w-4 h-4 text-accent shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-whatsapp-text text-sm truncate">{f.name}</p>
-                      <p className="text-whatsapp-muted text-xs">{new Date(f.created_at).toLocaleDateString('nl-NL')}</p>
+                      <p className="text-text-primary text-sm truncate">{f.name}</p>
+                      <p className="text-text-tertiary text-xs">{new Date(f.created_at).toLocaleDateString('nl-NL')}</p>
                     </div>
-                    <button onClick={() => deleteFile(f.id)} className="text-whatsapp-muted hover:text-red-400 transition-colors">
+                    <button onClick={() => deleteFile(f.id)} className="text-text-tertiary hover:text-danger transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -199,7 +199,7 @@ export default function ContextManager({ onClose }: Props) {
           {/* Links tab */}
           {tab === 'links' && (
             <div className="space-y-4">
-              <p className="text-whatsapp-muted text-xs">Voeg weblinks toe. De inhoud wordt opgehaald en gebruikt als context door de AI.</p>
+              <p className="text-text-tertiary text-xs">Voeg weblinks toe. De inhoud wordt opgehaald en gebruikt als context door de AI.</p>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -207,26 +207,26 @@ export default function ContextManager({ onClose }: Props) {
                   value={urlInput}
                   onChange={e => setUrlInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addLink()}
-                  className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                  className="flex-1 bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                 />
                 <button
                   onClick={addLink}
                   disabled={loadingUrl || !urlInput.trim()}
-                  className="flex items-center gap-1 bg-whatsapp-teal disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                  className="flex items-center gap-1 bg-accent disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg hover:bg-accent-hover transition-colors"
                 >
                   {loadingUrl ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 </button>
               </div>
               <div className="space-y-2">
-                {links.length === 0 && <p className="text-whatsapp-muted text-sm text-center py-4">Geen links</p>}
+                {links.length === 0 && <p className="text-text-tertiary text-sm text-center py-4">Geen links</p>}
                 {links.map(l => (
-                  <div key={l.id} className="flex items-center gap-3 bg-whatsapp-input rounded-lg px-3 py-2.5">
-                    <Link className="w-4 h-4 text-whatsapp-teal shrink-0" />
+                  <div key={l.id} className="flex items-center gap-3 bg-surface-2 rounded-lg px-3 py-2.5">
+                    <Link className="w-4 h-4 text-accent shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-whatsapp-text text-sm truncate">{l.title || l.url}</p>
-                      <p className="text-whatsapp-muted text-xs truncate">{l.url}</p>
+                      <p className="text-text-primary text-sm truncate">{l.title || l.url}</p>
+                      <p className="text-text-tertiary text-xs truncate">{l.url}</p>
                     </div>
-                    <button onClick={() => deleteLink(l.id)} className="text-whatsapp-muted hover:text-red-400 transition-colors">
+                    <button onClick={() => deleteLink(l.id)} className="text-text-tertiary hover:text-danger transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -238,18 +238,18 @@ export default function ContextManager({ onClose }: Props) {
           {/* Tone tab */}
           {tab === 'tone' && (
             <div className="space-y-4">
-              <p className="text-whatsapp-muted text-xs">Beschrijf de gewenste toon en stijl voor AI-antwoorden. Bv: &quot;Vriendelijk en informeel, gebruik &lsquo;je/jij&rsquo;, max 3 alinea&apos;s...&quot;</p>
+              <p className="text-text-tertiary text-xs">Beschrijf de gewenste toon en stijl voor AI-antwoorden. Bv: &quot;Vriendelijk en informeel, gebruik &lsquo;je/jij&rsquo;, max 3 alinea&apos;s...&quot;</p>
               <textarea
                 value={toneEdited}
                 onChange={e => setToneEdited(e.target.value)}
                 rows={8}
                 placeholder="Schrijf hier de tone-of-voice instructies..."
-                className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none"
+                className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none"
               />
               <button
                 onClick={saveTone}
                 disabled={savingTone || toneEdited === tone}
-                className="flex items-center gap-2 bg-whatsapp-teal disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                className="flex items-center gap-2 bg-accent disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors"
               >
                 {savingTone ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Opslaan

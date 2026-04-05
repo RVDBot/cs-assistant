@@ -56,13 +56,13 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  processing: 'bg-blue-500/20 text-blue-400',
-  completed: 'bg-green-500/20 text-green-400',
-  'on-hold': 'bg-yellow-500/20 text-yellow-400',
-  pending: 'bg-yellow-500/20 text-yellow-400',
-  cancelled: 'bg-red-500/20 text-red-400',
-  refunded: 'bg-purple-500/20 text-purple-400',
-  failed: 'bg-red-500/20 text-red-400',
+  processing: 'bg-blue-50 text-blue-700',
+  completed: 'bg-green-50 text-green-700',
+  'on-hold': 'bg-amber-50 text-amber-700',
+  pending: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-red-50 text-red-700',
+  refunded: 'bg-purple-50 text-purple-700',
+  failed: 'bg-red-50 text-red-700',
 }
 
 const MATCH_ICONS: Record<string, { icon: typeof Phone; label: string }> = {
@@ -81,7 +81,7 @@ function MatchBadges({ sources }: { sources?: string[] }) {
         if (!match) return null
         const Icon = match.icon
         return (
-          <span key={s} title={match.label} className="text-whatsapp-muted">
+          <span key={s} title={match.label} className="text-text-tertiary">
             <Icon className="w-3 h-3" />
           </span>
         )
@@ -255,24 +255,24 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
-        className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-full max-w-[560px] max-h-[85vh] flex flex-col shadow-2xl"
+        className="bg-surface-1 border border-border rounded-xl w-full max-w-[560px] max-h-[85vh] flex flex-col shadow-lg"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-whatsapp-border shrink-0">
-          <h2 className="text-whatsapp-text font-semibold flex items-center gap-2">
-            <Package className="w-5 h-5 text-whatsapp-teal" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <h2 className="text-text-primary font-semibold flex items-center gap-2">
+            <Package className="w-5 h-5 text-accent" />
             Bestellingen
-            {orders.length > 0 && <span className="text-whatsapp-muted text-sm font-normal">({orders.length})</span>}
-            {refreshing && <Loader2 className="w-4 h-4 animate-spin text-whatsapp-muted" />}
+            {orders.length > 0 && <span className="text-text-tertiary text-sm font-normal">({orders.length})</span>}
+            {refreshing && <Loader2 className="w-4 h-4 animate-spin text-text-tertiary" />}
           </h2>
           <div className="flex items-center gap-2">
             {orders.length > 0 && !refreshing && (
-              <button onClick={refreshOrders} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors" title="Vernieuwen">
+              <button onClick={refreshOrders} className="text-text-tertiary hover:text-text-primary transition-colors" title="Vernieuwen">
                 <RefreshCw className="w-4 h-4" />
               </button>
             )}
-            <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+            <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -282,13 +282,13 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
         <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
           {initialLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-whatsapp-teal" />
-              <span className="ml-2 text-whatsapp-muted text-sm">Bestellingen zoeken...</span>
+              <Loader2 className="w-6 h-6 animate-spin text-accent" />
+              <span className="ml-2 text-text-tertiary text-sm">Bestellingen zoeken...</span>
             </div>
           ) : (
             <>
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-red-400 text-xs flex items-center gap-2">
+                <div className="bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2 text-danger text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </div>
@@ -299,26 +299,26 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                 <div className="relative">
                   <button
                     onClick={() => setShowDropdown(v => !v)}
-                    className="w-full flex items-center justify-between bg-whatsapp-input border border-whatsapp-border rounded-lg px-3 py-2.5 text-sm text-whatsapp-text hover:border-whatsapp-teal transition-colors"
+                    className="w-full flex items-center justify-between bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary hover:border-accent transition-colors"
                   >
                     <span className="flex items-center gap-2">
                       {selectedOrder?.number || 'Selecteer bestelling'}
                       <MatchBadges sources={selectedOrder?.matchSources} />
-                      <span className="text-whatsapp-muted">—</span> {selectedOrder ? formatDate(selectedOrder.dateCreated) : ''}
-                      {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
+                      <span className="text-text-tertiary">—</span> {selectedOrder ? formatDate(selectedOrder.dateCreated) : ''}
+                      {refreshing && <Loader2 className="w-3 h-3 animate-spin text-text-tertiary" />}
                     </span>
-                    <ChevronDown className={`w-4 h-4 text-whatsapp-muted transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-text-tertiary transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   {showDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-whatsapp-panel border border-whatsapp-border rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-surface-1 border border-border rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
                       {orders.map(o => (
                         <button
                           key={o.id}
                           onClick={() => { setSelectedOrderId(o.id); setShowDropdown(false) }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-whatsapp-input transition-colors ${o.id === selectedOrderId ? 'bg-whatsapp-input text-whatsapp-teal' : 'text-whatsapp-text'}`}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-surface-2 transition-colors ${o.id === selectedOrderId ? 'bg-surface-2 text-accent' : 'text-text-primary'}`}
                         >
                           <span className="flex items-center">{o.number}<MatchBadges sources={o.matchSources} /> <span className="ml-1">— {formatDate(o.dateCreated)}</span></span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] || 'bg-whatsapp-input text-whatsapp-muted'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] || 'bg-surface-2 text-text-tertiary'}`}>
                             {o.statusLabel}
                           </span>
                         </button>
@@ -331,12 +331,12 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
               {/* Single order info */}
               {orders.length === 1 && selectedOrder && (
                 <div className="flex items-center justify-between">
-                  <span className="text-whatsapp-text font-medium flex items-center gap-2">
+                  <span className="text-text-primary font-medium flex items-center gap-2">
                     {selectedOrder.number}
                     <MatchBadges sources={selectedOrder.matchSources} />
-                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-whatsapp-muted" />}
+                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-text-tertiary" />}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selectedOrder.status] || 'bg-whatsapp-input text-whatsapp-muted'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selectedOrder.status] || 'bg-surface-2 text-text-tertiary'}`}>
                     {selectedOrder.statusLabel}
                   </span>
                 </div>
@@ -346,7 +346,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
               {selectedOrder && !selectedOrder.error && (
                 <div className="space-y-4">
                   {/* Meta row */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-whatsapp-muted">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-tertiary">
                     <span>Besteld: {formatDate(selectedOrder.dateCreated)}</span>
                     <span>Totaal: {formatCurrency(selectedOrder.total, selectedOrder.currency)}</span>
                     {selectedOrder.paymentMethod && <span>Betaling: {selectedOrder.paymentMethod}</span>}
@@ -358,15 +358,15 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                       href={selectedOrder.adminUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-whatsapp-teal text-xs hover:underline"
+                      className="flex items-center gap-1 text-accent text-xs hover:underline"
                     >
                       <ExternalLink className="w-3 h-3" />
                       Bekijk in WooCommerce
                     </a>
-                    <span className="text-whatsapp-border">|</span>
+                    <span className="text-border">|</span>
                     <button
                       onClick={() => handleRemoveOrder(selectedOrder.id)}
-                      className="flex items-center gap-1 text-red-400/70 text-xs hover:text-red-400 transition-colors"
+                      className="flex items-center gap-1 text-danger/70 text-xs hover:text-danger transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
                       Verwijderen
@@ -374,43 +374,43 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                   </div>
 
                   {/* Shipping address */}
-                  <div className="bg-whatsapp-input rounded-lg p-3">
-                    <div className="flex items-center gap-1.5 text-whatsapp-muted text-xs font-medium mb-1.5">
+                  <div className="bg-surface-2 rounded-lg p-3">
+                    <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium mb-1.5">
                       <MapPin className="w-3.5 h-3.5" />
                       Leveradres
                     </div>
-                    <p className="text-whatsapp-text text-sm whitespace-pre-line leading-relaxed">
+                    <p className="text-text-primary text-sm whitespace-pre-line leading-relaxed">
                       {formatAddress(selectedOrder.shipping)}
                     </p>
                   </div>
 
                   {/* Billing address (only if different) */}
                   {!selectedOrder.sameAddress && (
-                    <div className="bg-whatsapp-input rounded-lg p-3">
-                      <div className="flex items-center gap-1.5 text-whatsapp-muted text-xs font-medium mb-1.5">
+                    <div className="bg-surface-2 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium mb-1.5">
                         <MapPin className="w-3.5 h-3.5" />
                         Factuuradres
                       </div>
-                      <p className="text-whatsapp-text text-sm whitespace-pre-line leading-relaxed">
+                      <p className="text-text-primary text-sm whitespace-pre-line leading-relaxed">
                         {formatAddress(selectedOrder.billing)}
                       </p>
                     </div>
                   )}
 
                   {/* Order items */}
-                  <div className="bg-whatsapp-input rounded-lg p-3">
-                    <div className="flex items-center gap-1.5 text-whatsapp-muted text-xs font-medium mb-2">
+                  <div className="bg-surface-2 rounded-lg p-3">
+                    <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium mb-2">
                       <Package className="w-3.5 h-3.5" />
                       Artikelen
                     </div>
                     <div className="space-y-1.5">
                       {selectedOrder.items.map((item, i) => (
                         <div key={i} className="flex items-start justify-between text-sm">
-                          <span className="text-whatsapp-text">
+                          <span className="text-text-primary">
                             {item.quantity}x {item.name}
-                            {item.sku && <span className="text-whatsapp-muted text-xs ml-1">({item.sku})</span>}
+                            {item.sku && <span className="text-text-tertiary text-xs ml-1">({item.sku})</span>}
                           </span>
-                          <span className="text-whatsapp-muted shrink-0 ml-2">
+                          <span className="text-text-tertiary shrink-0 ml-2">
                             {formatCurrency(item.total, selectedOrder.currency)}
                           </span>
                         </div>
@@ -420,26 +420,26 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
 
                   {/* Tracking */}
                   {selectedOrder.tracking.length > 0 && (
-                    <div className="bg-whatsapp-input rounded-lg p-3">
-                      <div className="flex items-center gap-1.5 text-whatsapp-muted text-xs font-medium mb-2">
+                    <div className="bg-surface-2 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium mb-2">
                         <Truck className="w-3.5 h-3.5" />
                         Tracking
                       </div>
                       <div className="space-y-2">
                         {selectedOrder.tracking.map((t, i) => (
                           <div key={i} className="text-sm">
-                            <div className="text-whatsapp-text">
+                            <div className="text-text-primary">
                               {t.tracking_provider}: <span className="font-mono text-xs">{t.tracking_number}</span>
                             </div>
                             {t.date_shipped && (
-                              <div className="text-whatsapp-muted text-xs">Verzonden: {formatDate(t.date_shipped)}</div>
+                              <div className="text-text-tertiary text-xs">Verzonden: {formatDate(t.date_shipped)}</div>
                             )}
                             {t.tracking_link && (
                               <a
                                 href={t.tracking_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-whatsapp-teal text-xs hover:underline mt-0.5"
+                                className="flex items-center gap-1 text-accent text-xs hover:underline mt-0.5"
                               >
                                 <ExternalLink className="w-3 h-3" />
                                 Track & Trace
@@ -455,11 +455,11 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
 
               {/* Error order */}
               {selectedOrder?.error && (
-                <div className="bg-whatsapp-input rounded-lg p-3 text-whatsapp-muted text-sm">
+                <div className="bg-surface-2 rounded-lg p-3 text-text-tertiary text-sm">
                   Bestelgegevens konden niet worden opgehaald uit WooCommerce.
                   <button
                     onClick={() => handleRemoveOrder(selectedOrder.id)}
-                    className="flex items-center gap-1 text-red-400/70 text-xs hover:text-red-400 transition-colors mt-2"
+                    className="flex items-center gap-1 text-danger/70 text-xs hover:text-danger transition-colors mt-2"
                   >
                     <Trash2 className="w-3 h-3" />
                     Verwijderen
@@ -469,7 +469,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
 
               {/* No orders found */}
               {orders.length === 0 && !initialLoading && !error && (
-                <div className="text-center text-whatsapp-muted text-sm py-6">
+                <div className="text-center text-text-tertiary text-sm py-6">
                   Geen bestellingen gevonden voor deze klant.
                 </div>
               )}
@@ -477,14 +477,14 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
               {/* Suggestions from messages */}
               {hasSuggestions && (
                 <div className="space-y-2">
-                  <p className="text-whatsapp-muted text-xs">Gevonden in berichten:</p>
+                  <p className="text-text-tertiary text-xs">Gevonden in berichten:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {unlinkedOrderNumbers.map(n => (
                       <button
                         key={n}
                         onClick={() => handleSearch(n)}
                         disabled={searching}
-                        className="bg-whatsapp-teal/10 text-whatsapp-teal text-xs px-2.5 py-1 rounded-full hover:bg-whatsapp-teal/20 transition-colors"
+                        className="bg-accent-subtle text-accent text-xs px-2.5 py-1 rounded-full hover:bg-accent-muted transition-colors"
                       >
                         {n}
                       </button>
@@ -494,7 +494,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                         key={e}
                         onClick={() => handleSearch(e)}
                         disabled={searching}
-                        className="bg-whatsapp-teal/10 text-whatsapp-teal text-xs px-2.5 py-1 rounded-full hover:bg-whatsapp-teal/20 transition-colors"
+                        className="bg-accent-subtle text-accent text-xs px-2.5 py-1 rounded-full hover:bg-accent-muted transition-colors"
                       >
                         {e}
                       </button>
@@ -504,8 +504,8 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
               )}
 
               {/* Manual search */}
-              <div className="border-t border-whatsapp-border pt-4">
-                <p className="text-whatsapp-muted text-xs mb-2">Zoek op bestelnummer, e-mailadres of telefoonnummer</p>
+              <div className="border-t border-border pt-4">
+                <p className="text-text-tertiary text-xs mb-2">Zoek op bestelnummer, e-mailadres of telefoonnummer</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -513,12 +513,12 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                    className="flex-1 bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                   />
                   <button
                     onClick={() => handleSearch()}
                     disabled={searching || !searchInput.trim()}
-                    className="flex items-center gap-1 bg-whatsapp-teal disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                    className="flex items-center gap-1 bg-accent disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg hover:bg-accent-hover transition-colors"
                   >
                     {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </button>

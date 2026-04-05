@@ -46,15 +46,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-whatsapp-dark flex items-center justify-center">
+    <div className="min-h-screen bg-surface-0 flex items-center justify-center">
       <div className="w-full max-w-sm">
-        <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl p-8 shadow-2xl">
+        <div className="bg-surface-1 border border-border-subtle rounded-2xl p-8 shadow-sm">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-whatsapp-teal/20 flex items-center justify-center mb-4">
-              <Lock className="w-7 h-7 text-whatsapp-teal" />
+            <div className="w-16 h-16 rounded-full bg-accent-muted flex items-center justify-center mb-4">
+              <Lock className="w-7 h-7 text-accent" />
             </div>
-            <h1 className="text-whatsapp-text text-xl font-semibold">CS Assistant</h1>
-            <p className="text-whatsapp-muted text-sm mt-1">
+            <h1 className="text-text-primary text-xl font-semibold">CS Assistant</h1>
+            <p className="text-text-tertiary text-sm mt-1">
               {passwordRequired ? 'Voer het wachtwoord in om door te gaan' : 'Klik op inloggen om door te gaan'}
             </p>
           </div>
@@ -67,18 +67,18 @@ export default function LoginPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 autoFocus
-                className="w-full bg-whatsapp-input text-whatsapp-text px-4 py-3 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted text-sm"
+                className="w-full bg-surface-1 text-text-primary px-4 py-3 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary text-sm"
               />
             )}
 
             {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
+              <p className="text-danger text-sm text-center">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || (passwordRequired && !password)}
-              className="w-full flex items-center justify-center gap-2 bg-whatsapp-teal hover:bg-whatsapp-teal/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Inloggen'}
             </button>

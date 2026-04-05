@@ -224,8 +224,8 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
 
   if (!conversation) {
     return (
-      <div className="w-[380px] min-w-[320px] flex flex-col items-center justify-center bg-whatsapp-panel border-l border-whatsapp-border">
-        <div className="text-center text-whatsapp-muted px-6">
+      <div className="w-[380px] min-w-[320px] flex flex-col items-center justify-center bg-surface-1 border-l border-border">
+        <div className="text-center text-text-tertiary px-6">
           <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Selecteer een gesprek voor AI-hulp</p>
         </div>
@@ -237,29 +237,29 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
   const { answer, generating, improving, improveInput, showDutch, error, tokens } = state
 
   return (
-    <div className="w-[380px] min-w-[320px] flex flex-col min-h-0 bg-whatsapp-panel border-l border-whatsapp-border">
+    <div className="w-[380px] min-w-[320px] flex flex-col min-h-0 bg-surface-1 border-l border-border">
       {/* Token usage */}
       {tokens && (tokens.input > 0 || tokens.output > 0) && (
-        <div className="flex items-center justify-between px-4 py-1.5 bg-whatsapp-input border-b border-whatsapp-border text-[11px] text-whatsapp-muted">
+        <div className="flex items-center justify-between px-4 py-1.5 bg-surface-2 border-b border-border text-[11px] text-text-tertiary">
           <span>Tokens dit gesprek</span>
           <span className="font-mono">{tokens.input.toLocaleString('nl-NL')} in · {tokens.output.toLocaleString('nl-NL')} uit</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="px-4 py-3 border-b border-whatsapp-border">
+      <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-whatsapp-teal" />
-            <h2 className="text-whatsapp-text font-semibold text-sm">AI Assistent</h2>
+            <Sparkles className="w-4 h-4 text-accent" />
+            <h2 className="text-text-primary font-semibold text-sm">AI Assistent</h2>
           </div>
           {onClose && (
-            <button onClick={onClose} className="text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+            <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1 text-whatsapp-muted text-xs mt-0.5">
+        <div className="flex items-center gap-1 text-text-tertiary text-xs mt-0.5">
           <span>Klant schrijft in:</span>
           <select
             value={conversation.detected_language}
@@ -272,14 +272,14 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
               })
               onLanguageChange?.(lang)
             }}
-            className="bg-transparent text-whatsapp-teal text-xs font-medium cursor-pointer outline-none border-none appearance-none hover:text-[#06cf9c] transition-colors pr-4 relative"
+            className="bg-transparent text-accent text-xs font-medium cursor-pointer outline-none border-none appearance-none hover:text-accent-hover transition-colors pr-4 relative"
             style={{ backgroundImage: 'none' }}
           >
             {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
-              <option key={code} value={code} className="bg-whatsapp-panel text-whatsapp-text">{name}</option>
+              <option key={code} value={code} className="bg-surface-1 text-text-primary">{name}</option>
             ))}
           </select>
-          <ChevronDown className="w-3 h-3 text-whatsapp-teal -ml-3.5 pointer-events-none" />
+          <ChevronDown className="w-3 h-3 text-accent -ml-3.5 pointer-events-none" />
         </div>
       </div>
 
@@ -290,7 +290,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
         <button
           onClick={generate}
           disabled={generating}
-          className="w-full flex items-center justify-center gap-2 bg-whatsapp-teal hover:bg-whatsapp-teal/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
         >
           {generating ? (
             <>
@@ -307,7 +307,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
 
         {/* Error */}
         {error && (
-          <div className="bg-red-500/20 border border-red-500/30 rounded-lg px-3 py-2 text-red-400 text-xs">
+          <div className="bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2 text-danger text-xs">
             {error}
           </div>
         )}
@@ -316,16 +316,16 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
         {answer && (
           <div className="space-y-3 fade-in">
             {/* Tab toggle */}
-            <div className="flex rounded-lg overflow-hidden border border-whatsapp-border text-xs">
+            <div className="flex rounded-lg overflow-hidden border border-border text-xs">
               <button
                 onClick={() => patch({ showDutch: true })}
-                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${showDutch ? 'bg-whatsapp-teal text-white' : 'text-whatsapp-muted hover:bg-whatsapp-input'}`}
+                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
               >
                 🇳🇱 Nederlands (CS)
               </button>
               <button
                 onClick={() => patch({ showDutch: false })}
-                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${!showDutch ? 'bg-whatsapp-teal text-white' : 'text-whatsapp-muted hover:bg-whatsapp-input'}`}
+                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${!showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
               >
                 <Languages className="w-3 h-3" />
                 {langName} (Klant)
@@ -333,29 +333,29 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             </div>
 
             {/* Answer text */}
-            <div className="bg-whatsapp-input rounded-lg p-3 relative">
-              <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="bg-surface-2 rounded-lg p-3 relative">
+              <p className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
                 {showDutch ? answer.dutch : answer.customerLang}
               </p>
               <button
                 onClick={() => copyToClipboard(showDutch ? answer.dutch : answer.customerLang)}
-                className="absolute top-2 right-2 p-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+                className="absolute top-2 right-2 p-1 text-text-tertiary hover:text-text-primary transition-colors"
                 title="Kopiëren"
               >
-                {copied ? <CheckIcon className="w-3.5 h-3.5 text-whatsapp-teal" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <CheckIcon className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
 
             {/* Word-for-word translation label */}
             {!showDutch && (
-              <p className="text-whatsapp-muted text-[11px] px-1">
+              <p className="text-text-tertiary text-[11px] px-1">
                 ↑ Woord-voor-woord vertaling in {langName} voor de klant
               </p>
             )}
 
             {/* Improve section */}
             <div className="space-y-1.5">
-              <p className="text-whatsapp-muted text-xs">Antwoord verbeteren</p>
+              <p className="text-text-tertiary text-xs">Antwoord verbeteren</p>
               <div className="flex gap-2 items-end">
                 <textarea
                   placeholder="Instructie aan AI, bv: maak het korter..."
@@ -363,7 +363,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
                   onChange={e => patch({ improveInput: e.target.value })}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); improve() } }}
                   rows={1}
-                  className="flex-1 bg-whatsapp-input text-whatsapp-text text-xs px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+                  className="flex-1 bg-surface-2 text-text-primary text-xs px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none max-h-32"
                   onInput={e => {
                     const t = e.currentTarget
                     t.style.height = 'auto'
@@ -373,7 +373,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
                 <button
                   onClick={improve}
                   disabled={improving || !improveInput.trim()}
-                  className="p-2 bg-whatsapp-teal disabled:opacity-40 text-white rounded-lg hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+                  className="p-2 bg-accent disabled:opacity-40 text-white rounded-lg hover:bg-accent-hover transition-colors shrink-0"
                 >
                   {improving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 </button>
@@ -384,7 +384,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             <button
               onClick={send}
               disabled={sending}
-              className="w-full flex items-center justify-center gap-2 bg-whatsapp-teal hover:bg-whatsapp-teal/90 disabled:opacity-50 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
             >
               {sending ? (
                 <>

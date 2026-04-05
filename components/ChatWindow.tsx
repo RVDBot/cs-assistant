@@ -48,8 +48,8 @@ interface Template {
 function EmailCc({ cc }: { cc: Array<{ address: string; name: string }> }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="text-[11px] text-whatsapp-muted">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-1 hover:text-whatsapp-text">
+    <div className="text-[11px] text-text-tertiary">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1 hover:text-text-primary">
         CC: {cc.length} ontvanger{cc.length > 1 ? 's' : ''}
         <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -346,14 +346,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
   if (!conversationId) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#222e35]">
-        <div className="text-center text-whatsapp-muted">
-          <div className="w-20 h-20 rounded-full bg-whatsapp-input flex items-center justify-center mx-auto mb-4">
+      <div className="flex-1 flex flex-col items-center justify-center bg-surface-0">
+        <div className="text-center text-text-tertiary">
+          <div className="w-20 h-20 rounded-full bg-surface-2 flex items-center justify-center mx-auto mb-4">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
           </div>
-          <h2 className="text-whatsapp-text text-lg font-medium mb-1">CS Assistant</h2>
+          <h2 className="text-text-primary text-lg font-medium mb-1">CS Assistant</h2>
           <p className="text-sm">Selecteer een gesprek om te starten</p>
         </div>
       </div>
@@ -362,18 +362,18 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#222e35]">
-        <div className="text-whatsapp-muted text-sm">Laden...</div>
+      <div className="flex-1 flex items-center justify-center bg-surface-0">
+        <div className="text-text-tertiary text-sm">Laden...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#222e35]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-surface-0">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-whatsapp-panel border-b border-whatsapp-border shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 bg-surface-1 border-b border-border shrink-0">
         {onBack && (
-          <button onClick={onBack} className="md:hidden p-1 -ml-1 text-whatsapp-muted hover:text-whatsapp-text transition-colors">
+          <button onClick={onBack} className="md:hidden p-1 -ml-1 text-text-tertiary hover:text-text-primary transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
@@ -386,23 +386,23 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 value={nameInput}
                 onChange={e => setNameInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false) }}
-                className="bg-whatsapp-input text-whatsapp-text text-sm px-2 py-1 rounded outline-none border border-whatsapp-teal w-48"
+                className="bg-surface-2 text-text-primary text-sm px-2 py-1 rounded outline-none border border-accent w-48"
               />
-              <button onClick={saveName} className="text-whatsapp-teal text-xs hover:underline">Opslaan</button>
-              <button onClick={() => setEditingName(false)} className="text-whatsapp-muted text-xs hover:underline">Annuleer</button>
+              <button onClick={saveName} className="text-accent text-xs hover:underline">Opslaan</button>
+              <button onClick={() => setEditingName(false)} className="text-text-tertiary text-xs hover:underline">Annuleer</button>
             </div>
           ) : (
             <button
               onClick={() => { setNameInput(conversation?.customer_name || ''); setEditingName(true) }}
               className="text-left group"
             >
-              <div className="text-whatsapp-text font-medium text-sm flex items-center gap-1">
+              <div className="text-text-primary font-medium text-sm flex items-center gap-1">
                 {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
                 <User className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
               </div>
             </button>
           )}
-          <div className="text-whatsapp-muted text-xs flex items-center gap-1.5 flex-wrap">
+          <div className="text-text-tertiary text-xs flex items-center gap-1.5 flex-wrap">
             {conversation?.customer_phone && <span>{formatPhone(conversation.customer_phone)}</span>}
             {conversation?.customer_phone && conversation?.customer_email && <span>&middot;</span>}
             {conversation?.customer_email && <span>{conversation.customer_email}</span>}
@@ -410,14 +410,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <span>{getLanguageName(conversation?.detected_language || 'en')}</span>
             <button
               onClick={() => setShowOrders(true)}
-              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+              className="inline-flex items-center gap-1 text-accent hover:underline"
             >
               <Package className="w-3 h-3" />
               <span className="hidden sm:inline">Bestellingen{orderCount > 0 ? ` (${orderCount})` : ''}</span>
             </button>
             <button
               onClick={openMerge}
-              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+              className="inline-flex items-center gap-1 text-accent hover:underline"
             >
               <Merge className="w-3 h-3" />
               <span className="hidden sm:inline">Samenvoegen</span>
@@ -434,7 +434,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 onMessageSent?.()
                 if (archive) onBack?.()
               }}
-              className="inline-flex items-center gap-1 text-whatsapp-teal hover:underline"
+              className="inline-flex items-center gap-1 text-accent hover:underline"
             >
               <Archive className="w-3 h-3" />
               <span className="hidden sm:inline">{conversation?.is_archived ? 'Terughalen' : 'Archiveren'}</span>
@@ -446,25 +446,25 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
         <div className="md:hidden relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(v => !v)}
-            className="p-1.5 text-whatsapp-muted hover:text-whatsapp-text transition-colors"
+            className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-whatsapp-panel border border-whatsapp-border rounded-lg shadow-xl z-50 overflow-hidden">
+            <div className="absolute right-0 top-full mt-1 w-44 bg-surface-1 border border-border rounded-lg shadow-xl z-50 overflow-hidden">
               {onOpenKnowledge && (
-                <button onClick={() => { setShowMenu(false); onOpenKnowledge() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
-                  <BookOpen className="w-4 h-4 text-whatsapp-muted" /> Kennisbank
+                <button onClick={() => { setShowMenu(false); onOpenKnowledge() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
+                  <BookOpen className="w-4 h-4 text-text-tertiary" /> Kennisbank
                 </button>
               )}
               {onOpenContext && (
-                <button onClick={() => { setShowMenu(false); onOpenContext() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
-                  <FileText className="w-4 h-4 text-whatsapp-muted" /> Context
+                <button onClick={() => { setShowMenu(false); onOpenContext() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
+                  <FileText className="w-4 h-4 text-text-tertiary" /> Context
                 </button>
               )}
               {onOpenSettings && (
-                <button onClick={() => { setShowMenu(false); onOpenSettings() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-whatsapp-text hover:bg-whatsapp-input transition-colors">
-                  <SettingsIcon className="w-4 h-4 text-whatsapp-muted" /> Instellingen
+                <button onClick={() => { setShowMenu(false); onOpenSettings() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
+                  <SettingsIcon className="w-4 h-4 text-text-tertiary" /> Instellingen
                 </button>
               )}
             </div>
@@ -475,7 +475,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-1">
         {messages.length === 0 && (
-          <div className="text-center text-whatsapp-muted text-sm py-8">Geen berichten</div>
+          <div className="text-center text-text-tertiary text-sm py-8">Geen berichten</div>
         )}
         {messages.map((msg, i) => {
           const isInbound = msg.direction === 'inbound'
@@ -492,7 +492,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <div key={msg.id} className="fade-in">
               {showDate && (
                 <div className="flex justify-center my-3">
-                  <span className="bg-whatsapp-input text-whatsapp-muted text-xs px-3 py-1 rounded-full">
+                  <span className="bg-surface-2 text-text-tertiary text-xs px-3 py-1 rounded-full">
                     {new Date(msg.sent_at).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
                 </div>
@@ -504,14 +504,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                     <div className="mb-1">
                       <button
                         onClick={() => toggleTranslation(msg.id)}
-                        className="flex items-center gap-1 text-whatsapp-teal text-[11px] hover:underline mb-1"
+                        className="flex items-center gap-1 text-white/70 text-[11px] hover:underline mb-1"
                       >
                         <Languages className="w-3 h-3" />
                         {showTranslation[msg.id] ? 'Verstuurd bericht tonen' : 'NL-concept tonen'}
                         <ChevronDown className={`w-3 h-3 transition-transform ${showTranslation[msg.id] ? 'rotate-180' : ''}`} />
                       </button>
                       {showTranslation[msg.id] && (
-                        <div className="text-whatsapp-text/80 text-xs bg-black/20 rounded px-2 py-1 mb-1 italic">
+                        <div className="text-white/80 text-xs bg-white/15 rounded px-2 py-1 mb-1 italic">
                           🇳🇱 {msg.content}
                         </div>
                       )}
@@ -522,7 +522,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   {isInbound && msg.channel === 'email' && (
                     <div className="mb-2 space-y-1.5">
                       {msg.email_subject && (
-                        <div className="text-xs font-semibold text-whatsapp-text/90 border-b border-white/10 pb-1">
+                        <div className="text-xs font-semibold text-text-primary/90 border-b border-border-subtle pb-1">
                           {msg.email_subject}
                         </div>
                       )}
@@ -539,7 +539,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                           if (atts.length === 0) return null
                           return (
                             <div className="flex flex-wrap gap-1 items-center">
-                              <Paperclip className="w-3 h-3 text-whatsapp-muted shrink-0" />
+                              <Paperclip className="w-3 h-3 text-text-tertiary shrink-0" />
                               {atts.map((a, i) => (
                                 a.id && a.allowed ? (
                                   <a
@@ -547,12 +547,12 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                                     href={`/api/attachments/${a.id}?type=${encodeURIComponent(a.contentType)}&name=${encodeURIComponent(a.filename)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[11px] px-1.5 py-0.5 rounded bg-black/20 text-[#00a884] hover:text-[#06cf9c] underline cursor-pointer transition-colors"
+                                    className="text-[11px] px-1.5 py-0.5 rounded bg-accent-subtle text-accent hover:text-accent-hover underline cursor-pointer transition-colors"
                                   >
                                     {a.filename} ({formatFileSize(a.size)})
                                   </a>
                                 ) : (
-                                  <span key={i} className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                                  <span key={i} className="text-[11px] px-1.5 py-0.5 rounded bg-danger/20 text-danger">
                                     {a.filename} ({formatFileSize(a.size)})
                                   </span>
                                 )
@@ -601,7 +601,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                               return <audio key={i} src={src} controls className="w-full" />
                             }
                             return (
-                              <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="text-[#00a884] text-sm underline">
+                              <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="text-accent text-sm underline">
                                 📎 Bijlage
                               </a>
                             )
@@ -614,11 +614,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   {/* Message content: HTML for emails, plain text for others */}
                   {isInbound && msg.channel === 'email' && msg.email_html ? (
                     <div
-                      className="text-whatsapp-text text-sm leading-relaxed break-words email-content"
+                      className="text-text-primary text-sm leading-relaxed break-words email-content"
                       dangerouslySetInnerHTML={{ __html: msg.email_html }}
                     />
                   ) : (
-                    <p className="text-whatsapp-text text-sm leading-relaxed whitespace-pre-wrap break-words">
+                    <p className={`${isInbound ? 'text-text-primary' : 'text-white'} text-sm leading-relaxed whitespace-pre-wrap break-words`}>
                       {isInbound ? msg.content : outboundText}
                     </p>
                   )}
@@ -626,7 +626,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   {/* Inbound: dutch translation always shown below message */}
                   {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (
                     <div className="mt-1.5">
-                      <div className="text-whatsapp-text/70 text-xs bg-black/20 rounded px-2 py-1 italic">
+                      <div className="text-text-secondary text-xs bg-surface-2 rounded px-2 py-1 italic">
                         🇳🇱 {msg.content_dutch}
                       </div>
                     </div>
@@ -634,19 +634,19 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
                   <div className={`flex items-center gap-1 mt-1 ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     {msg.template_id && (
-                      <span title="Template bericht"><FileStack className="w-2.5 h-2.5 text-whatsapp-teal" /></span>
+                      <span title="Template bericht"><FileStack className={`w-2.5 h-2.5 ${isInbound ? 'text-accent' : 'text-white/60'}`} /></span>
                     )}
                     {msg.channel === 'email' ? (
-                      <Mail className="w-2.5 h-2.5 text-whatsapp-muted" />
+                      <Mail className={`w-2.5 h-2.5 ${isInbound ? 'text-text-tertiary' : 'text-white/60'}`} />
                     ) : (
-                      <MessageSquare className="w-2.5 h-2.5 text-whatsapp-muted" />
+                      <MessageSquare className={`w-2.5 h-2.5 ${isInbound ? 'text-text-tertiary' : 'text-white/60'}`} />
                     )}
-                    <span className="text-whatsapp-muted text-[10px]">{formatTime(msg.sent_at)}</span>
+                    <span className={`text-[10px] ${isInbound ? 'text-text-tertiary' : 'text-white/60'}`}>{formatTime(msg.sent_at)}</span>
                     {!isInbound && (
-                      msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-400" /> :
-                      msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-whatsapp-muted" /> :
-                      msg.status === 'demo' ? <Check className="w-3 h-3 text-yellow-400" /> :
-                      <Check className="w-3 h-3 text-whatsapp-muted" />
+                      msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-white" /> :
+                      msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-white/60" /> :
+                      msg.status === 'demo' ? <Check className="w-3 h-3 text-yellow-300" /> :
+                      <Check className="w-3 h-3 text-white/60" />
                     )}
                   </div>
 
@@ -678,13 +678,13 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
 
       {/* Template picker (when WhatsApp window expired) */}
       {windowExpired && sendChannel === 'whatsapp' ? (
-        <div className="border-t border-whatsapp-border shrink-0 bg-whatsapp-panel">
+        <div className="border-t border-border shrink-0 bg-surface-1">
           {selectedTemplate ? (
             /* Variable form */
             <div className="px-4 py-3 space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-whatsapp-text text-sm font-medium">{selectedTemplate.name}</h4>
-                <button onClick={() => { setSelectedTemplate(null); setTemplateVars({}) }} className="text-whatsapp-muted hover:text-whatsapp-text text-xs">
+                <h4 className="text-text-primary text-sm font-medium">{selectedTemplate.name}</h4>
+                <button onClick={() => { setSelectedTemplate(null); setTemplateVars({}) }} className="text-text-tertiary hover:text-text-primary text-xs">
                   Terug
                 </button>
               </div>
@@ -692,7 +692,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               {(() => {
                 const nlVariant = selectedTemplate.variants.find(v => v.language === 'nl') || selectedTemplate.variants[0]
                 return nlVariant?.preview ? (
-                  <div className="text-whatsapp-text/70 text-xs bg-whatsapp-input rounded px-3 py-2 italic whitespace-pre-wrap">
+                  <div className="text-text-primary/70 text-xs bg-surface-2 rounded px-3 py-2 italic whitespace-pre-wrap">
                     {nlVariant.preview}
                   </div>
                 ) : null
@@ -700,17 +700,17 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               {/* Variable inputs */}
               {selectedTemplate.variables.map(v => (
                 <div key={v.key} className="space-y-1">
-                  <label className="text-whatsapp-muted text-xs">{v.label || `Variabele {{${v.key}}}`}</label>
+                  <label className="text-text-tertiary text-xs">{v.label || `Variabele {{${v.key}}}`}</label>
                   <input
                     value={templateVars[v.key] || ''}
                     onChange={e => setTemplateVars(p => ({ ...p, [v.key]: e.target.value }))}
-                    className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                    className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                     placeholder={v.label}
                   />
                 </div>
               ))}
               {/* Language info */}
-              <div className="text-whatsapp-muted text-[11px] flex items-center gap-1">
+              <div className="text-text-tertiary text-[11px] flex items-center gap-1">
                 Wordt verstuurd in {conversation?.detected_language?.toUpperCase() || '?'}
                 {(() => {
                   const hasExact = selectedTemplate.variants.some(v => v.language === conversation?.detected_language)
@@ -728,7 +728,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               <button
                 onClick={sendTemplate}
                 disabled={sendingTemplate || selectedTemplate.variables.some(v => !templateVars[v.key]?.trim())}
-                className="w-full flex items-center justify-center gap-2 bg-whatsapp-teal disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-whatsapp-teal/90 transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-accent disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-accent-hover transition-colors"
               >
                 {sendingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Verstuur template
@@ -738,11 +738,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             /* Template cards */
             <div className="px-4 py-3 space-y-2">
               <div className="flex items-center gap-2">
-                <FileStack className="w-4 h-4 text-whatsapp-teal shrink-0" />
-                <span className="text-whatsapp-muted text-xs">Het 24-uurs venster is verlopen. Gebruik een template.</span>
+                <FileStack className="w-4 h-4 text-accent shrink-0" />
+                <span className="text-text-tertiary text-xs">Het 24-uurs venster is verlopen. Gebruik een template.</span>
               </div>
               {templates.length === 0 ? (
-                <p className="text-whatsapp-muted text-xs py-2">Geen templates beschikbaar. Voeg templates toe in Instellingen.</p>
+                <p className="text-text-tertiary text-xs py-2">Geen templates beschikbaar. Voeg templates toe in Instellingen.</p>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                   {templates.map(tpl => (
@@ -752,11 +752,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                         setSelectedTemplate(tpl)
                         setTemplateVars({})
                       }}
-                      className="shrink-0 bg-whatsapp-input hover:bg-whatsapp-border rounded-lg p-3 text-left transition-colors min-w-[160px] max-w-[200px]"
+                      className="shrink-0 bg-surface-2 hover:bg-border rounded-lg p-3 text-left transition-colors min-w-[160px] max-w-[200px]"
                     >
-                      <p className="text-whatsapp-text text-sm font-medium truncate">{tpl.name}</p>
-                      {tpl.description && <p className="text-whatsapp-muted text-xs mt-0.5 line-clamp-2">{tpl.description}</p>}
-                      <p className="text-whatsapp-muted text-[10px] mt-1">
+                      <p className="text-text-primary text-sm font-medium truncate">{tpl.name}</p>
+                      {tpl.description && <p className="text-text-tertiary text-xs mt-0.5 line-clamp-2">{tpl.description}</p>}
+                      <p className="text-text-tertiary text-[10px] mt-1">
                         {tpl.variants.map(v => v.language.toUpperCase()).join(', ')}
                       </p>
                     </button>
@@ -770,7 +770,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <div className="px-4 pb-3">
               <button
                 onClick={() => { setSendChannel('email'); onChannelChange?.('email') }}
-                className="text-xs text-whatsapp-teal hover:underline flex items-center gap-1"
+                className="text-xs text-accent hover:underline flex items-center gap-1"
               >
                 <Mail className="w-3 h-3" /> Stuur via email
               </button>
@@ -780,7 +780,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       ) : (
         /* Normal manual send input */
         <div
-          className={`bg-whatsapp-panel border-t shrink-0 transition-colors ${dragging ? 'border-whatsapp-teal bg-whatsapp-teal/5' : 'border-whatsapp-border'}`}
+          className={`bg-surface-1 border-t shrink-0 transition-colors ${dragging ? 'border-accent bg-accent-subtle' : 'border-border'}`}
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={e => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
@@ -791,15 +791,15 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               {attachedFiles.map((f, i) => (
                 <div key={i} className="relative group">
                   {f.type.startsWith('image/') ? (
-                    <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-whatsapp-border" />
+                    <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
                   ) : (
-                    <div className="w-16 h-16 rounded-lg border border-whatsapp-border bg-whatsapp-input flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-whatsapp-muted" />
+                    <div className="w-16 h-16 rounded-lg border border-border bg-surface-2 flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-text-tertiary" />
                     </div>
                   )}
                   <button
                     onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-danger rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -811,7 +811,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <select
               value={sendChannel}
               onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
-              className="bg-whatsapp-input text-whatsapp-text text-xs px-2 py-2 rounded-lg border border-whatsapp-border focus:border-whatsapp-teal outline-none shrink-0"
+              className="bg-surface-2 text-text-primary text-xs px-2 py-2 rounded-lg border border-border focus:border-accent outline-none shrink-0"
             >
               {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
               {conversation?.customer_email && <option value="email">Email</option>}
@@ -826,7 +826,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-whatsapp-muted hover:text-whatsapp-text transition-colors shrink-0"
+              className="p-2 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
               title="Foto of video toevoegen"
             >
               <ImageIcon className="w-5 h-5" />
@@ -845,7 +845,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               }}
               placeholder={dragging ? 'Sleep hier je foto naartoe...' : 'Typ een bericht...'}
               rows={1}
-              className="flex-1 bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted resize-none max-h-32"
+              className="flex-1 bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none max-h-32"
               style={{ height: 'auto' }}
               onInput={e => {
                 const t = e.currentTarget
@@ -856,7 +856,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <button
               onClick={sendManual}
               disabled={sending || (!manualText.trim() && !attachedFiles.length)}
-              className="p-2.5 bg-whatsapp-teal disabled:opacity-40 text-white rounded-full hover:bg-whatsapp-teal/90 transition-colors shrink-0"
+              className="p-2.5 bg-accent disabled:opacity-40 text-white rounded-full hover:bg-accent-hover transition-colors shrink-0"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -867,26 +867,26 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       {/* Merge modal */}
       {showMerge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-whatsapp-panel border border-whatsapp-border rounded-xl w-[400px] max-h-[60vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-whatsapp-border">
-              <h3 className="text-whatsapp-text font-semibold text-sm">Samenvoegen met...</h3>
-              <button onClick={() => setShowMerge(false)} className="text-whatsapp-muted hover:text-whatsapp-text">
+          <div className="bg-surface-1 border border-border rounded-2xl w-[400px] max-h-[60vh] flex flex-col shadow-lg">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-text-primary font-semibold text-sm">Samenvoegen met...</h3>
+              <button onClick={() => setShowMerge(false)} className="text-text-tertiary hover:text-text-primary">
                 <span className="text-lg">&times;</span>
               </button>
             </div>
-            <div className="px-4 py-2 border-b border-whatsapp-border">
+            <div className="px-4 py-2 border-b border-border">
               <input
                 type="text"
                 value={mergeSearch}
                 onChange={e => setMergeSearch(e.target.value)}
                 placeholder="Zoek op naam, telefoon of email..."
-                className="w-full bg-whatsapp-input text-whatsapp-text text-sm px-3 py-2 rounded-lg outline-none border border-whatsapp-border focus:border-whatsapp-teal placeholder:text-whatsapp-muted"
+                className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                 autoFocus
               />
             </div>
             <div className="flex-1 overflow-y-auto">
               {mergeList.length === 0 && (
-                <div className="text-whatsapp-muted text-sm text-center py-8">Geen andere conversaties</div>
+                <div className="text-text-tertiary text-sm text-center py-8">Geen andere conversaties</div>
               )}
               {mergeList.filter(c => {
                 if (!mergeSearch.trim()) return true
@@ -895,37 +895,37 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   || (c.customer_phone || '').toLowerCase().includes(q)
                   || (c.customer_email || '').toLowerCase().includes(q)
               }).map(c => (
-                <div key={c.id} className="border-b border-whatsapp-border/30">
+                <div key={c.id} className="border-b border-border/30">
                   <button
                     onClick={() => setMergeConfirmId(mergeConfirmId === c.id ? null : c.id)}
                     disabled={merging}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-whatsapp-input transition-colors text-left disabled:opacity-50"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left disabled:opacity-50"
                   >
                     <MonsterAvatar identifier={c.customer_phone || c.customer_email || ''} size={36} className="shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-whatsapp-text text-sm truncate">
+                      <div className="text-text-primary text-sm truncate">
                         {formatContactName(c.customer_name, c.customer_phone || '', c.customer_email)}
                       </div>
-                      <div className="text-whatsapp-muted text-xs flex items-center gap-1">
+                      <div className="text-text-tertiary text-xs flex items-center gap-1">
                         {c.customer_phone && <MessageSquare className="w-3 h-3" />}
                         {c.customer_email && <Mail className="w-3 h-3" />}
                       </div>
                     </div>
                   </button>
                   {mergeConfirmId === c.id && (
-                    <div className="px-4 py-2 bg-whatsapp-input flex items-center justify-between">
-                      <span className="text-whatsapp-muted text-xs">Samenvoegen? Dit kan niet ongedaan worden.</span>
+                    <div className="px-4 py-2 bg-surface-2 flex items-center justify-between">
+                      <span className="text-text-tertiary text-xs">Samenvoegen? Dit kan niet ongedaan worden.</span>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setMergeConfirmId(null)}
-                          className="text-xs text-whatsapp-muted hover:text-whatsapp-text px-2 py-1"
+                          className="text-xs text-text-tertiary hover:text-text-primary px-2 py-1"
                         >
                           Annuleren
                         </button>
                         <button
                           onClick={() => doMerge(c.id)}
                           disabled={merging}
-                          className="text-xs bg-whatsapp-teal text-white px-3 py-1 rounded hover:bg-whatsapp-teal/90 disabled:opacity-50"
+                          className="text-xs bg-accent text-white px-3 py-1 rounded hover:bg-accent-hover disabled:opacity-50"
                         >
                           {merging ? 'Bezig...' : 'Bevestigen'}
                         </button>

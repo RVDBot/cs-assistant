@@ -53,11 +53,12 @@ export async function sendWhatsAppTemplate(
   const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
   const fromFormatted = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`
 
+  const hasVariables = Object.keys(contentVariables).length > 0
   const message = await client.messages.create({
     from: fromFormatted,
     to: toFormatted,
     contentSid,
-    contentVariables: JSON.stringify(contentVariables),
+    ...(hasVariables ? { contentVariables: JSON.stringify(contentVariables) } : {}),
     ...(baseUrl ? { statusCallback: `${baseUrl.replace(/\/$/, '')}/api/twilio/status` } : {}),
   })
   return message.sid

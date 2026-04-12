@@ -91,7 +91,10 @@ function MatchBadges({ sources }: { sources?: string[] }) {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  // WC shipment tracking stores date_shipped as Unix timestamp (seconds)
+  const num = Number(dateStr)
+  const date = !isNaN(num) && num > 0 && num < 1e11 ? new Date(num * 1000) : new Date(dateStr)
+  return date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function formatAddress(addr: Address): string {
@@ -372,6 +375,24 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                       Verwijderen
                     </button>
                   </div>
+
+                  {/* Customer contact info */}
+                  {(selectedOrder.billing.email || selectedOrder.billing.phone) && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-tertiary">
+                      {selectedOrder.billing.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {selectedOrder.billing.email}
+                        </span>
+                      )}
+                      {selectedOrder.billing.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {selectedOrder.billing.phone}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Shipping address */}
                   <div className="bg-surface-2 rounded-lg p-3">

@@ -220,7 +220,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [templateSaving, setTemplateSaving] = useState(false)
 
   const emptyTemplate: TemplateForm = {
-    name: '', description: '', variables: [{ key: '1', label: '' }], variants: [{ language: 'nl', content_sid: '', preview: '' }],
+    name: '', description: '', variables: [], variants: [{ language: 'nl', content_sid: '', preview: '' }],
   }
 
   async function fetchTemplates() {
@@ -462,17 +462,15 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                               placeholder="Label (bijv. Klantnaam)"
                               className="flex-1 bg-surface-2 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                             />
-                            {editingTemplate.variables.length > 1 && (
-                              <button
-                                onClick={() => setEditingTemplate(p => p && ({
-                                  ...p,
-                                  variables: p.variables.filter((_, j) => j !== i),
-                                }))}
-                                className="text-text-tertiary hover:text-danger p-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => setEditingTemplate(p => p && ({
+                                ...p,
+                                variables: p.variables.filter((_, j) => j !== i),
+                              }))}
+                              className="text-text-tertiary hover:text-danger p-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           </div>
                         ))}
                       </div>

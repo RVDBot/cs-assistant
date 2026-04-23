@@ -40,7 +40,9 @@ function isStandalonePWA(): boolean {
 
 function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false
-  return /iPhone|iPad|iPod/.test(navigator.userAgent)
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) return true
+  // iPadOS 13+ reports as Macintosh in userAgent; detect via touch support.
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
 }
 
 export function NotificationsSettings() {

@@ -48,7 +48,15 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil((async () => {
     try {
       const resp = await fetch('/api/push/vapid-public-key')
-      if (!resp.ok) return
+      // If the auth cookie expired, middleware redirects to /login (HTML). Detect that
+      // explicitly instead of letting resp.json() throw into a silent catch.
+      const contentType = resp.headers.get('content-type') || ''
+      if (!resp.ok || !contentType.includes('application/json')) {
+        // Leave a breadcrumb so the next open of the app can surface it
+        const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        clientsList.forEach(c => c.postMessage({ type: 'PUSH_RESUBSCRIBE_FAILED', reason: 'auth-or-network' }))
+        return
+      }
       const { publicKey } = await resp.json()
       const newSub = await self.registration.pushManager.subscribe({
         userVisibleOnly: true,

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack } from 'lucide-react'
-import { NotificationsSettings } from './NotificationsSettings'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, Bell, BellOff, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack } from 'lucide-react'
 
 const CLAUDE_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
@@ -49,6 +48,96 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
 interface Props {
   onClose: () => void
   onOpenLogs?: () => void
+}
+
+function NotificationSettings() {
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('notif-enabled') !== '0'
+  })
+  const [permission, setPermission] = useState<string>('default')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermission(Notification.permission)
+    }
+  }, [])
+
+  function toggle() {
+    const next = !enabled
+    setEnabled(next)
+    localStorage.setItem('notif-enabled', next ? '1' : '0')
+  }
+
+  async function requestPerm() {
+    if (!('Notification' in window)) return
+    const result = await Notification.requestPermission()
+    setPermission(result)
+  }
+
+  async function sendTest() {
+    if (Notification.permission !== 'granted') return
+    const reg = await navigator.serviceWorker?.getRegistration()
+    if (reg) {
+      reg.showNotification('CS Assistant', {
+        body: 'Meldingen werken!',
+        icon: '/favicon-192x192.png',
+        badge: '/favicon-192x192.png',
+      })
+    } else {
+      new Notification('CS Assistant', {
+        body: 'Meldingen werken!',
+        icon: '/favicon-192x192.png',
+      })
+    }
+  }
+
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+
+  return (
+    <div className="space-y-3">
+      {!supported && (
+        <p className="text-text-tertiary text-xs">Je browser ondersteunt geen meldingen.</p>
+      )}
+      {supported && permission === 'granted' && (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {enabled ? <Bell className="w-4 h-4 text-accent" /> : <BellOff className="w-4 h-4 text-text-tertiary" />}
+              <span className="text-text-primary text-sm">{enabled ? 'Meldingen aan' : 'Meldingen uit'}</span>
+            </div>
+            <button
+              onClick={toggle}
+              className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-accent' : 'bg-border'}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'left-5' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <button
+            onClick={sendTest}
+            className="text-xs text-accent hover:underline"
+          >
+            Stuur testmelding
+          </button>
+        </>
+      )}
+      {supported && permission === 'default' && (
+        <button
+          onClick={requestPerm}
+          className="flex items-center gap-2 text-sm bg-accent text-white px-3 py-1.5 rounded-lg hover:bg-accent-hover transition-colors"
+        >
+          <Bell className="w-4 h-4" />
+          Meldingen inschakelen
+        </button>
+      )}
+      {supported && permission === 'denied' && (
+        <p className="text-text-tertiary text-xs">Meldingen zijn geblokkeerd door je browser. Wijzig dit in je browserinstellingen.</p>
+      )}
+      <p className="text-text-tertiary text-[11px]">
+        Status: {!supported ? 'niet ondersteund' : permission === 'granted' ? 'toegestaan' : permission === 'denied' ? 'geblokkeerd' : 'niet ingesteld'}
+      </p>
+    </div>
+  )
 }
 
 type Tab = 'whatsapp' | 'templates' | 'email' | 'claude' | 'woocommerce' | 'general'
@@ -889,7 +978,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                 <>
                   <section className="space-y-4">
                     <h3 className="text-text-primary font-medium text-sm">Meldingen</h3>
-                    <NotificationsSettings />
+                    <NotificationSettings />
                   </section>
 
                   <hr className="border-border" />

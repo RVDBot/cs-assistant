@@ -4,7 +4,6 @@ import { detectLanguage, translateToDutch } from '@/lib/claude'
 import { log } from '@/lib/logger'
 import { validateTwilioSignature } from '@/lib/security'
 import { downloadAndStoreMedia } from '@/lib/media'
-import { sendPushToAllDevices } from '@/lib/push'
 
 const TWIML_EMPTY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
@@ -148,19 +147,6 @@ export async function POST(req: NextRequest) {
     INSERT INTO messages (conversation_id, direction, content, content_dutch, language, twilio_sid, status, media_url)
     VALUES (?, 'inbound', ?, ?, ?, ?, 'received', ?)
   `).run(conv.id, content, dutchContent, language, messageSid, mediaJson)
-
-  try {
-    const convRow = db.prepare('SELECT customer_name FROM conversations WHERE id = ?').get(conv.id) as { customer_name: string | null } | undefined
-    const title = convRow?.customer_name || from.replace(/^whatsapp:/, '')
-    await sendPushToAllDevices({
-      title,
-      body: dutchContent.slice(0, 140),
-      url: `/?conversation=${conv.id}`,
-      tag: `conv-${conv.id}`,
-    })
-  } catch (e) {
-    log('error', 'push', 'Push verzenden na inbound WhatsApp mislukt', { error: e instanceof Error ? e.message : String(e) }, conv.id)
-  }
 
   log('info', 'bericht', `Inkomend bericht ontvangen (${language.toUpperCase()})`, { from, sid: messageSid, media: mediaItems.length || undefined }, conv.id)
 

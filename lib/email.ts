@@ -1,6 +1,7 @@
 import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
+import { sendPushToAllDevices } from './push'
 import path from 'path'
 import fs from 'fs'
 
@@ -451,6 +452,19 @@ async function processIncomingEmail(
     INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id, email_html, email_cc, email_attachments)
     VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?, ?, ?, ?)
   `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id, emailHtml, emailCc, emailAttachments)
+
+  try {
+    const convRow = db.prepare('SELECT customer_name FROM conversations WHERE id = ?').get(convId) as { customer_name: string | null } | undefined
+    const title = convRow?.customer_name || fromAddr
+    await sendPushToAllDevices({
+      title,
+      body: dutchContent.slice(0, 140),
+      url: `/?conversation=${convId}`,
+      tag: `conv-${convId}`,
+    })
+  } catch (e) {
+    log('error', 'push', 'Push verzenden na inbound email mislukt', { error: e instanceof Error ? e.message : String(e) }, convId ?? undefined)
+  }
 
   log('info', 'bericht', `Email ontvangen via ${account.name} van ${fromAddr} (${language.toUpperCase()})`, { from: fromAddr, subject, account: account.name }, convId)
 

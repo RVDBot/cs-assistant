@@ -124,6 +124,19 @@ function initSchema(db: Database.Database) {
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
       PRIMARY KEY (conversation_id, wc_order_id)
     );
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      endpoint     TEXT NOT NULL UNIQUE,
+      p256dh_key   TEXT NOT NULL,
+      auth_key     TEXT NOT NULL,
+      device_label TEXT,
+      user_agent   TEXT,
+      created_at   INTEGER NOT NULL,
+      last_used_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_push_subs_endpoint ON push_subscriptions(endpoint);
   `)
 
   // Safe migrations for existing databases
@@ -336,4 +349,15 @@ export interface ContextLink {
   title: string | null
   content: string | null
   created_at: string
+}
+
+export interface PushSubscriptionRow {
+  id: number
+  endpoint: string
+  p256dh_key: string
+  auth_key: string
+  device_label: string | null
+  user_agent: string | null
+  created_at: number
+  last_used_at: number | null
 }

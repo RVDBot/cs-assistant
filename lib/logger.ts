@@ -1,7 +1,7 @@
 import { getDb } from './db'
 
 export type LogLevel = 'info' | 'warn' | 'error'
-export type LogCategory = 'bericht' | 'ai' | 'twilio' | 'systeem' | 'media'
+export type LogCategory = 'bericht' | 'ai' | 'twilio' | 'systeem' | 'media' | 'push'
 
 export function log(
   level: LogLevel,

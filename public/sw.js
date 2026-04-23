@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
-// Listen for messages from the main app to show notifications
+// In-tab notifications (legacy): main app can still postMessage to show a local notification
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, url } = event.data
@@ -23,19 +23,72 @@ self.addEventListener('message', (event) => {
   }
 })
 
-// Handle notification click — focus or open the app
+// Real server push
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: 'CS Assistant', body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'CS Assistant', {
+      body: data.body || '',
+      icon: '/favicon-192x192.png',
+      badge: '/favicon-192x192.png',
+      tag: data.tag,
+      data: { url: data.url || '/' },
+      renotify: !!data.tag,
+    })
+  )
+})
+
+// Browser revoked the subscription — ask the server for the VAPID key and re-subscribe
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const resp = await fetch('/api/push/vapid-public-key')
+      if (!resp.ok) return
+      const { publicKey } = await resp.json()
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      })
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ subscription: newSub.toJSON() }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch {
+      // Next successful app open will re-subscribe via the UI
+    }
+  })())
+})
+
+// Notification click → focus/open the PWA on the right conversation
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = event.notification.data?.url || '/'
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus()
-        }
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const existing = clientsList.find(c => c.url.startsWith(self.location.origin))
+    if (existing) {
+      await existing.focus()
+      if ('navigate' in existing) {
+        try { await existing.navigate(url) } catch {}
       }
-      return self.clients.openWindow(url)
-    })
-  )
+      return
+    }
+    await self.clients.openWindow(url)
+  })())
 })
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const output = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i)
+  return output
+}

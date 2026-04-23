@@ -27,7 +27,7 @@ Currently cs-assistant has a PWA manifest and a service worker, but the service 
 | --- | --- | --- |
 | Approach | Proper Web Push in the existing PWA (option A of three considered) | Infra is already partially in place; free; keeps everything in one app; iOS 16.4+ Web Push is mature |
 | Triggering events | Everything that increments the unread counter (all inbound channels) | User picked "C" — broadest coverage, simplest mental model |
-| Notification body | Dutch preview, auto-translated by Claude before the push is sent | User picked "C" — operator reads NL; translation is reused from existing Dutch-toggle flow so no duplicate Claude calls |
+| Notification body | Dutch preview (reused from `messages.content_dutch`) | User picked "C" — operator reads NL; the app already translates at ingest, so no additional Claude call is needed |
 | Hosting | VPS with a fixed domain | Subscriptions are origin-bound; a stable domain avoids re-subscribing |
 | Target devices | iPhone + iPad + Mac | Requires per-device subscriptions |
 | Quiet hours | Not built in the app | iOS Focus/DND silences Web Push system-wide |
@@ -78,8 +78,8 @@ Currently cs-assistant has a PWA manifest and a service worker, but the service 
 
 ### Changes to existing code
 
-- **Translation on ingest, not on toggle.** Today the Dutch translation appears to be produced when the user clicks the "Dutch toggle." To reuse it in the push preview we translate immediately on ingest and store the Dutch text alongside the original. The UI toggle then simply reads the stored translation (lazy-translate is kept only as a fallback for historical rows).
-- **Twilio webhook handler** and **email ingest** gain a single call to `sendPushToAllDevices` after a new message is persisted.
+- **Twilio webhook handler** (`app/api/twilio/webhook/route.ts`) and **IMAP poller** (`lib/email.ts`) gain a single call to `sendPushToAllDevices` after a new inbound message is persisted.
+- **Translation is already done at ingest** today (both handlers call `translateToDutch` before inserting the row and store the result in `messages.content_dutch`). The push path simply reuses that value — no change to the translation flow needed.
 
 ---
 
@@ -320,7 +320,6 @@ No Jest is configured in the repo today; a runnable `scripts/test-push.ts` using
 
 These are not design questions (the design is decided) but implementation details to resolve during planning:
 
-- Exact schema migration strategy (the app uses `better-sqlite3` and a `db:init` script — check whether migrations are run idempotently)
-- Whether the translation-on-ingest change needs to be backfilled for existing rows or can be lazy for legacy conversations
-- Error logging integration (the repo has `lib/logger.ts` — route push-send failures through it)
-- How the login middleware should treat the `/api/push/*` routes (likely: same as other authenticated routes)
+- The app uses idempotent migrations via `CREATE TABLE IF NOT EXISTS` plus `try { ALTER ... } catch {}` in `lib/db.ts` → `initSchema`. The new table follows the same pattern.
+- `lib/logger.ts` already provides a `log(level, category, message, meta?, conversationId?)` helper. A new `'push'` log category will be added for push-related events.
+- `middleware.ts` matcher already excludes `sw.js` + static assets and gates everything else via the `cs_auth` cookie. `/api/push/*` routes are automatically protected — no middleware changes required. The service worker at `/sw.js` remains publicly accessible (required for PWA).

@@ -117,4 +117,3 @@ export async function sendPushToAllDevices(payload: PushPayload): Promise<SendRe
   const ok = results.filter(Boolean).length
   return { total: rows.length, ok, failed: rows.length - ok }
 }
-// auto-deploy smoke test: 2026-04-24 10:19:47

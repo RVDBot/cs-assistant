@@ -4,9 +4,9 @@ import { getDb } from '@/lib/db'
 const MYPARCEL_API = 'https://api.myparcel.nl'
 
 const PACKAGE_TYPES: Record<string, number> = {
-  ongefrankeerd: 4,
+  ongefrankeerd: 3,
   brievenbuspakje: 2,
-  klein_pakket: 1,
+  klein_pakket: 6,
   normaal_pakket: 1,
 }
 

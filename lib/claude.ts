@@ -126,8 +126,10 @@ export async function generateAnswer(params: {
   customerMessageDutch: string
   customerLanguage: string
   conversationHistory: ConversationHistory[]
+  lastOutboundMessage?: string | null
   previousConversations?: string
   conversationId?: number
+  preContext?: string
 }): Promise<{ dutch: string; customerLang: string }> {
   const client = getClient()
   const tone = getToneOfVoice()

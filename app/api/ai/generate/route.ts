@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db'
 import { generateAnswer } from '@/lib/claude'
 
 export async function POST(req: NextRequest) {
-  const { conversation_id } = await req.json()
+  const { conversation_id, pre_context } = await req.json()
 
   if (!conversation_id) {
     return NextResponse.json({ error: 'Missing conversation_id' }, { status: 400 })
@@ -37,13 +37,18 @@ export async function POST(req: NextRequest) {
       : m.content,
   }))
 
+  // Most recent outbound message (last reply sent to customer)
+  const lastOutbound = [...messages].reverse().find(m => m.direction === 'outbound')
+
   try {
     const result = await generateAnswer({
       customerMessage: lastInbound.content,
       customerMessageDutch: lastInbound.content_dutch || lastInbound.content,
       customerLanguage: conv.detected_language,
       conversationHistory: history.slice(0, -1),
+      lastOutboundMessage: lastOutbound?.content || null,
       conversationId: conv.id,
+      preContext: pre_context || '',
     })
     return NextResponse.json(result)
   } catch (e) {

@@ -22,6 +22,7 @@ interface ConvState {
   generating: boolean
   improving: boolean
   improveInput: string
+  preContext: string
   showDutch: boolean
   error: string | null
   tokens: { input: number; output: number } | null
@@ -33,6 +34,7 @@ function emptyState(): ConvState {
     generating: false,
     improving: false,
     improveInput: '',
+    preContext: '',
     showDutch: true,
     error: null,
     tokens: null,
@@ -111,7 +113,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: forConvId }),
+        body: JSON.stringify({ conversation_id: forConvId, pre_context: state.preContext }),
       })
       const data = await res.json()
       // Discard if user switched to a different conversation while this was in flight
@@ -139,7 +141,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
         cache.current[forConvId] = { ...cache.current[forConvId], generating: false }
       }
     }
-  }, [conversation])
+  }, [conversation, state.preContext])
 
   const improve = useCallback(async () => {
     if (!conversation || !state.answer || !state.improveInput.trim()) return
@@ -234,7 +236,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
   }
 
   const langName = getLanguageName(conversation.detected_language)
-  const { answer, generating, improving, improveInput, showDutch, error, tokens } = state
+  const { answer, generating, improving, improveInput, preContext, showDutch, error, tokens } = state
 
   return (
     <div className="w-[380px] min-w-[320px] flex flex-col min-h-0 bg-surface-1 border-l border-border">
@@ -285,6 +287,23 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-4">
+
+        {/* Pre-generation context */}
+        <div className="space-y-1.5">
+          <p className="text-text-tertiary text-xs">Context voor AI (optioneel)</p>
+          <textarea
+            placeholder="Bijv: klant is al eerder geholpen, geef korting aan..."
+            value={preContext}
+            onChange={e => patch({ preContext: e.target.value })}
+            rows={1}
+            className="w-full bg-surface-2 text-text-primary text-xs px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none max-h-32"
+            onInput={e => {
+              const t = e.currentTarget
+              t.style.height = 'auto'
+              t.style.height = `${Math.min(t.scrollHeight, 128)}px`
+            }}
+          />
+        </div>
 
         {/* Generate button */}
         <button

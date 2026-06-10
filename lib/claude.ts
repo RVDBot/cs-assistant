@@ -147,8 +147,13 @@ ${contextFiles ? `## Company Documents\n${contextFiles}\n` : ''}
 
 ${contextLinks ? `## Reference Links\n${contextLinks}\n` : ''}
 
+${params.preContext?.trim() ? `## Agent Instructions (MUST follow these)\n${params.preContext.trim()}\n` : ''}
+
 ## Your Task
 Based on the customer's message and conversation history, generate a helpful, professional response in Dutch (for the customer service employee to review). The customer writes in ${params.customerLanguage}.
+
+**Message priority:** The most recent customer message is the primary question to answer. The most recent reply from the customer service agent is important secondary context. Earlier conversation history is background only.
+${params.preContext?.trim() ? '\n**Important:** You have Agent Instructions above — apply them strictly when drafting your response.' : ''}
 
 Respond with a JSON object in this exact format:
 {
@@ -165,7 +170,14 @@ Important: Only return the JSON object, nothing else.`
     })),
     {
       role: 'user' as const,
-      content: `Customer message (original): ${params.customerMessage}\nCustomer message (Dutch): ${params.customerMessageDutch}\n\nGenerate a response.`,
+      content: [
+        params.lastOutboundMessage
+          ? `[Most recent CS reply]: ${params.lastOutboundMessage}`
+          : null,
+        `[Most recent customer message (original)]: ${params.customerMessage}`,
+        `[Most recent customer message (Dutch)]: ${params.customerMessageDutch}`,
+        'Generate a response.',
+      ].filter(Boolean).join('\n'),
     },
   ]
 

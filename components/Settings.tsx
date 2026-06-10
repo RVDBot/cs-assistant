@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack } from 'lucide-react'
+import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack, Truck } from 'lucide-react'
 import { NotificationsSettings } from './NotificationsSettings'
 
 const CLAUDE_MODELS = [
@@ -75,6 +75,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     wc_store_url: '',
     wc_consumer_key: '',
     wc_consumer_secret: '',
+    myparcel_api_key: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -83,6 +84,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [showKey, setShowKey] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showWcSecret, setShowWcSecret] = useState(false)
+  const [showMyParcelKey, setShowMyParcelKey] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [tokenStats, setTokenStats] = useState<{
     total_input: number
@@ -881,6 +883,33 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     onToggle={() => setShowWcSecret(!showWcSecret)}
                     placeholder="cs_..."
                   />
+
+                  <hr className="border-border" />
+
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-text-primary font-medium text-sm flex items-center gap-2">
+                      <Truck className="w-4 h-4" />
+                      MyParcel
+                    </h3>
+                    <a
+                      href="https://app.myparcel.nl/settings/general/api"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-accent text-xs hover:underline"
+                    >
+                      API keys <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <Field
+                    label="API Key"
+                    id="myparcel_api_key"
+                    value={settings.myparcel_api_key}
+                    onChange={v => setSettings(p => ({ ...p, myparcel_api_key: v }))}
+                    show={showMyParcelKey}
+                    onToggle={() => setShowMyParcelKey(!showMyParcelKey)}
+                    placeholder="••••••••"
+                  />
+                  <p className="text-text-tertiary text-[11px]">Vul je MyParcel API key in om labels aan te maken vanuit de bestellingen popup.</p>
                 </>
               )}
 

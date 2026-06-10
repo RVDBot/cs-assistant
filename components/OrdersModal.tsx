@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw, Phone, Mail, Hash, SearchIcon } from 'lucide-react'
+import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw, Phone, Mail, Hash, SearchIcon, Printer } from 'lucide-react'
 
 interface Address {
   first_name: string
@@ -128,11 +128,20 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
   const [detectedOrderNumbers, setDetectedOrderNumbers] = useState<string[]>([])
   const [detectedEmails, setDetectedEmails] = useState<string[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [labelType, setLabelType] = useState('ongefrankeerd')
+  const [showLabelDropdown, setShowLabelDropdown] = useState(false)
+  const [labelLoading, setLabelLoading] = useState(false)
+  const [labelResult, setLabelResult] = useState<{ url?: string | null; error?: string } | null>(null)
 
   useEffect(() => {
     loadCachedOrders()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId])
+
+  useEffect(() => {
+    setLabelResult(null)
+    setShowLabelDropdown(false)
+  }, [selectedOrderId])
 
   async function loadCachedOrders() {
     setInitialLoading(true)
@@ -244,6 +253,38 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
       }
     } catch {
       setError('Verwijderen mislukt')
+    }
+  }
+
+  const LABEL_TYPES = [
+    { id: 'ongefrankeerd', label: 'Ongefrankeerd' },
+    { id: 'brievenbuspakje', label: 'Brievenbuspakje' },
+    { id: 'klein_pakket', label: 'Klein pakket' },
+    { id: 'normaal_pakket', label: 'Normaal pakket' },
+  ]
+
+  async function createLabel() {
+    if (!selectedOrder) return
+    setLabelLoading(true)
+    setLabelResult(null)
+    try {
+      const res = await fetch('/api/myparcel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipping: selectedOrder.shipping,
+          order_number: selectedOrder.number,
+          package_type: labelType,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setLabelResult({ url: data.label_url })
+      if (data.label_url) window.open(data.label_url, '_blank')
+    } catch (e) {
+      setLabelResult({ error: e instanceof Error ? e.message : 'Label aanmaken mislukt' })
+    } finally {
+      setLabelLoading(false)
     }
   }
 
@@ -396,13 +437,61 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
 
                   {/* Shipping address */}
                   <div className="bg-surface-2 rounded-lg p-3">
-                    <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium mb-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      Leveradres
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5 text-text-tertiary text-xs font-medium">
+                        <MapPin className="w-3.5 h-3.5" />
+                        Leveradres
+                      </div>
+                      {/* MyParcel label split button */}
+                      <div className="relative">
+                        <div className="flex items-center">
+                          <button
+                            onClick={createLabel}
+                            disabled={labelLoading}
+                            className="flex items-center gap-1 text-[10px] bg-accent hover:bg-accent-hover disabled:opacity-50 text-white px-2 py-1 rounded-l-md transition-colors"
+                          >
+                            {labelLoading
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <Printer className="w-3 h-3" />
+                            }
+                            {LABEL_TYPES.find(t => t.id === labelType)?.label ?? 'Label aanmaken'}
+                          </button>
+                          <button
+                            onClick={() => setShowLabelDropdown(v => !v)}
+                            className="flex items-center px-1 py-1 bg-accent hover:bg-accent-hover text-white rounded-r-md border-l border-white/20 transition-colors"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {showLabelDropdown && (
+                          <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-border rounded-lg shadow-xl z-20 min-w-[160px]">
+                            {LABEL_TYPES.map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => { setLabelType(t.id); setShowLabelDropdown(false) }}
+                                className={`w-full text-left px-3 py-2 text-xs hover:bg-surface-2 transition-colors first:rounded-t-lg last:rounded-b-lg ${t.id === labelType ? 'text-accent font-medium' : 'text-text-primary'}`}
+                              >
+                                {t.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <p className="text-text-primary text-sm whitespace-pre-line leading-relaxed">
                       {formatAddress(selectedOrder.shipping)}
                     </p>
+                    {/* Label result feedback */}
+                    {labelResult && (
+                      <div className={`mt-2 text-[11px] ${labelResult.error ? 'text-danger' : 'text-green-400'}`}>
+                        {labelResult.error
+                          ? labelResult.error
+                          : labelResult.url
+                            ? <>Label aangemaakt. <a href={labelResult.url} target="_blank" rel="noopener noreferrer" className="underline">Download PDF</a></>
+                            : 'Label aangemaakt (open MyParcel om te downloaden)'
+                        }
+                      </div>
+                    )}
                   </div>
 
                   {/* Billing address (only if different) */}

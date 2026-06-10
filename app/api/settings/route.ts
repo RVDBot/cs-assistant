@@ -13,9 +13,10 @@ const SETTING_KEYS = [
   'wc_store_url',
   'wc_consumer_key',
   'wc_consumer_secret',
+  'myparcel_api_key',
 ]
 
-const SENSITIVE_KEYS = ['twilio_auth_token', 'anthropic_api_key', 'app_password', 'wc_consumer_secret']
+const SENSITIVE_KEYS = ['twilio_auth_token', 'anthropic_api_key', 'app_password', 'wc_consumer_secret', 'myparcel_api_key']
 
 export async function GET() {
   const db = getDb()

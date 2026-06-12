@@ -24,6 +24,16 @@ function getTwilioCredentials() {
 }
 
 /**
+ * Read a previously stored media file by its ID.
+ * Returns null if the file doesn't exist.
+ */
+export function readMediaFile(id: string): Buffer | null {
+  const filePath = path.join(MEDIA_DIR, id)
+  if (!fs.existsSync(filePath)) return null
+  return fs.readFileSync(filePath)
+}
+
+/**
  * Download media from a Twilio URL and store locally.
  * Returns the unique file ID.
  */

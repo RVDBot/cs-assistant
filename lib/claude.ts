@@ -121,6 +121,11 @@ interface ConversationHistory {
   content: string
 }
 
+export interface ImageAttachment {
+  data: string
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+}
+
 export async function generateAnswer(params: {
   customerMessage: string
   customerMessageDutch: string
@@ -130,6 +135,7 @@ export async function generateAnswer(params: {
   previousConversations?: string
   conversationId?: number
   preContext?: string
+  images?: ImageAttachment[]
 }): Promise<{ dutch: string; customerLang: string }> {
   const client = getClient()
   const tone = getToneOfVoice()
@@ -153,6 +159,7 @@ ${params.preContext?.trim() ? `## Agent Instructions (MUST follow these)\n${para
 Based on the customer's message and conversation history, generate a helpful, professional response in Dutch (for the customer service employee to review). The customer writes in ${params.customerLanguage}.
 
 **Message priority:** The most recent customer message is the primary question to answer. The most recent reply from the customer service agent is important secondary context. Earlier conversation history is background only.
+${params.images?.length ? `\n**Attached image(s):** The customer also sent ${params.images.length} image(s), included with this message. Look at them carefully (e.g. screenshots of errors, photos of products) and use what you see to inform your reply. Never tell the customer you cannot view the image.` : ''}
 ${params.preContext?.trim() ? '\n**Important:** You have Agent Instructions above — apply them strictly when drafting your response.' : ''}
 
 Respond with a JSON object in this exact format:
@@ -163,6 +170,23 @@ Respond with a JSON object in this exact format:
 
 Important: Only return the JSON object, nothing else.`
 
+  const lastUserText = [
+    params.lastOutboundMessage
+      ? `[Most recent CS reply]: ${params.lastOutboundMessage}`
+      : null,
+    `[Most recent customer message (original)]: ${params.customerMessage}`,
+    `[Most recent customer message (Dutch)]: ${params.customerMessageDutch}`,
+    'Generate a response.',
+  ].filter(Boolean).join('\n')
+
+  const lastUserContent: Anthropic.ContentBlockParam[] = [
+    ...(params.images || []).map((img): Anthropic.ImageBlockParam => ({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mediaType, data: img.data },
+    })),
+    { type: 'text', text: lastUserText },
+  ]
+
   const messages: Anthropic.MessageParam[] = [
     ...params.conversationHistory.map(h => ({
       role: h.role as 'user' | 'assistant',
@@ -170,14 +194,7 @@ Important: Only return the JSON object, nothing else.`
     })),
     {
       role: 'user' as const,
-      content: [
-        params.lastOutboundMessage
-          ? `[Most recent CS reply]: ${params.lastOutboundMessage}`
-          : null,
-        `[Most recent customer message (original)]: ${params.customerMessage}`,
-        `[Most recent customer message (Dutch)]: ${params.customerMessageDutch}`,
-        'Generate a response.',
-      ].filter(Boolean).join('\n'),
+      content: lastUserContent,
     },
   ]
 

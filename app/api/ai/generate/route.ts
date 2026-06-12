@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { generateAnswer } from '@/lib/claude'
+import { generateAnswer, type ImageAttachment } from '@/lib/claude'
+import { readMediaFile } from '@/lib/media'
+
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 export async function POST(req: NextRequest) {
   const { conversation_id, pre_context } = await req.json()
@@ -18,15 +21,28 @@ export async function POST(req: NextRequest) {
 
   // Get all messages for context
   const messages = db.prepare(`
-    SELECT direction, content, content_dutch FROM messages
+    SELECT direction, content, content_dutch, media_url FROM messages
     WHERE conversation_id = ?
     ORDER BY sent_at ASC
-  `).all(conversation_id) as { direction: string; content: string; content_dutch: string | null }[]
+  `).all(conversation_id) as { direction: string; content: string; content_dutch: string | null; media_url: string | null }[]
 
   // Last inbound message
   const lastInbound = [...messages].reverse().find(m => m.direction === 'inbound')
   if (!lastInbound) {
     return NextResponse.json({ error: 'No customer message found' }, { status: 400 })
+  }
+
+  // Load any images attached to the last inbound message so Claude can see them
+  const images: ImageAttachment[] = []
+  if (lastInbound.media_url) {
+    try {
+      const items = JSON.parse(lastInbound.media_url) as Array<{ id: string; contentType: string }>
+      for (const item of items) {
+        if (!SUPPORTED_IMAGE_TYPES.includes(item.contentType)) continue
+        const buf = readMediaFile(item.id)
+        if (buf) images.push({ data: buf.toString('base64'), mediaType: item.contentType as ImageAttachment['mediaType'] })
+      }
+    } catch {}
   }
 
   // Build conversation history for Claude (last 20 messages)
@@ -49,6 +65,7 @@ export async function POST(req: NextRequest) {
       lastOutboundMessage: lastOutbound?.content || null,
       conversationId: conv.id,
       preContext: pre_context || '',
+      images,
     })
     return NextResponse.json(result)
   } catch (e) {

@@ -112,8 +112,31 @@ export async function translateToLanguage(text: string, targetLang: string, conv
   return (response.content[0] as { text: string }).text.trim()
 }
 
-function stripCodeFences(text: string): string {
-  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+// Forces Claude to return the answer as structured tool input, instead of relying on
+// a "respond with JSON only" prompt instruction (which it doesn't always follow).
+const ANSWER_TOOL: Anthropic.Tool = {
+  name: 'provide_answer',
+  description: 'Provide the drafted customer service answer.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      answer_dutch: {
+        type: 'string',
+        description: 'The answer in Dutch, for the customer service employee to review',
+      },
+      answer_customer_lang: {
+        type: 'string',
+        description: "The same answer translated to the customer's language",
+      },
+    },
+    required: ['answer_dutch', 'answer_customer_lang'],
+  },
+}
+
+function extractAnswer(response: Anthropic.Message): { dutch: string; customerLang: string } {
+  const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+  const input = (toolUse?.input as { answer_dutch?: string; answer_customer_lang?: string } | undefined) || {}
+  return { dutch: input.answer_dutch || '', customerLang: input.answer_customer_lang || '' }
 }
 
 interface ConversationHistory {
@@ -162,13 +185,7 @@ Based on the customer's message and conversation history, generate a helpful, pr
 ${params.images?.length ? `\n**Attached image(s):** The customer also sent ${params.images.length} image(s), included with this message. Look at them carefully (e.g. screenshots of errors, photos of products) and use what you see to inform your reply. Never tell the customer you cannot view the image.` : ''}
 ${params.preContext?.trim() ? '\n**Important:** You have Agent Instructions above — apply them strictly when drafting your response.' : ''}
 
-Respond with a JSON object in this exact format:
-{
-  "answer_dutch": "The answer in Dutch for the customer service employee",
-  "answer_customer_lang": "The same answer translated to the customer's language (${params.customerLanguage})"
-}
-
-Important: Only return the JSON object, nothing else.`
+Use the \`provide_answer\` tool to give your response: the answer in Dutch for the employee, and the same answer translated to the customer's language (${params.customerLanguage}).`
 
   const lastUserText = [
     params.lastOutboundMessage
@@ -203,20 +220,12 @@ Important: Only return the JSON object, nothing else.`
     max_tokens: 2048,
     system: systemPrompt,
     messages,
+    tools: [ANSWER_TOOL],
+    tool_choice: { type: 'tool', name: 'provide_answer' },
   })
 
   logTokens(params.conversationId, 'generate', response.usage)
-  const raw = (response.content[0] as { text: string }).text.trim()
-  try {
-    const parsed = JSON.parse(stripCodeFences(raw))
-    return {
-      dutch: parsed.answer_dutch || '',
-      customerLang: parsed.answer_customer_lang || '',
-    }
-  } catch {
-    // Fallback if JSON parsing fails
-    return { dutch: raw, customerLang: raw }
-  }
+  return extractAnswer(response)
 }
 
 export async function improveAnswer(params: {
@@ -251,13 +260,7 @@ Rules:
 - Never tell the customer to visit a URL unless it is genuinely useful for them to do so (e.g. a tracking link)
 - Never mention that you looked something up or fetched a page
 
-Respond with a JSON object in this exact format:
-{
-  "answer_dutch": "The rewritten answer in Dutch",
-  "answer_customer_lang": "The rewritten answer translated to the customer's language (${params.customerLanguage})"
-}
-
-Only return the JSON object, nothing else.`
+Use the \`provide_answer\` tool to give your response: the rewritten answer in Dutch, and the same answer translated to the customer's language (${params.customerLanguage}).`
 
   const response = await client.messages.create({
     model: getModel(),
@@ -269,19 +272,12 @@ Only return the JSON object, nothing else.`
         content: `Customer message: ${params.customerMessage}\n\nCurrent draft (Dutch): ${params.currentAnswer}\n\nInstruction for you (do not copy into the answer): ${params.instruction}`,
       },
     ],
+    tools: [ANSWER_TOOL],
+    tool_choice: { type: 'tool', name: 'provide_answer' },
   })
 
   logTokens(params.conversationId, 'improve', response.usage)
-  const raw = (response.content[0] as { text: string }).text.trim()
-  try {
-    const parsed = JSON.parse(stripCodeFences(raw))
-    return {
-      dutch: parsed.answer_dutch || '',
-      customerLang: parsed.answer_customer_lang || '',
-    }
-  } catch {
-    return { dutch: raw, customerLang: raw }
-  }
+  return extractAnswer(response)
 }
 
 export async function updateKnowledgeFromAnswer(params: {

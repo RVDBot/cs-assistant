@@ -989,22 +989,31 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
               Uitloggen
             </button>
           </div>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="flex items-center gap-2 bg-accent disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : saved ? (
-              '✓ Opgeslagen'
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Opslaan
-              </>
-            )}
-          </button>
+          {/* Deze knop slaat alleen de instellingen op, niet het open sub-formulier.
+              Zichtbaar laten staan tijdens het bewerken van een template of account
+              geeft een '✓ Opgeslagen' terwijl die wijzigingen juist verloren gaan. */}
+          {editingTemplate || editingAccount ? (
+            <span className="text-text-tertiary text-xs">
+              Gebruik de knop onderaan het formulier om op te slaan
+            </span>
+          ) : (
+            <button
+              onClick={save}
+              disabled={saving}
+              className="flex items-center gap-2 bg-accent disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : saved ? (
+                '✓ Opgeslagen'
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Opslaan
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

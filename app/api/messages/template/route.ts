@@ -63,10 +63,23 @@ export async function POST(req: NextRequest) {
       fallback: isFallback || undefined,
     }, conversation_id)
   } catch (e) {
+    // Twilio RestException carries code/status/moreInfo/details next to message;
+    // zonder die velden is een fout als "Invalid Parameter" niet te herleiden.
+    const err = e as { message?: string; code?: number; status?: number; moreInfo?: string; details?: unknown }
+    const message = e instanceof Error ? e.message : String(e)
     log('error', 'twilio', `Template "${template.name}" versturen mislukt`, {
-      error: e instanceof Error ? e.message : String(e),
+      error: message,
+      twilio_code: err?.code,
+      twilio_status: err?.status,
+      more_info: err?.moreInfo,
+      details: err?.details,
+      language: variant.language,
+      content_sid: variant.content_sid,
+      content_variables: contentVariables,
+      to: conv.customer_phone,
     }, conversation_id)
-    return NextResponse.json({ error: 'Template versturen mislukt: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 })
+    const detail = err?.code ? `${message} (Twilio ${err.code})` : message
+    return NextResponse.json({ error: 'Template versturen mislukt: ' + detail }, { status: 500 })
   }
 
   const result = db.prepare(`

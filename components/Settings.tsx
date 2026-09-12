@@ -361,6 +361,11 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                             <Plus className="w-3 h-3" /> Toevoegen
                           </button>
                         </div>
+                        {editingTemplate.variables.length === 0 && (
+                          <p className="text-text-tertiary text-[11px]">
+                            Geen variabelen. Het Twilio-template wordt zonder variabelen verstuurd en er wordt geen invoerveld getoond bij het versturen.
+                          </p>
+                        )}
                         {editingTemplate.variables.map((v, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <span className="text-text-tertiary text-xs w-8 shrink-0 text-center">{`{{${v.key}}}`}</span>
@@ -535,7 +540,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       id: tpl.id,
                                       name: tpl.name,
                                       description: tpl.description || '',
-                                      variables: tpl.variables.length > 0 ? tpl.variables : [{ key: '1', label: '' }],
+                                      variables: tpl.variables,
                                       variants: tpl.variants.map((v: { language: string; content_sid: string; preview: string | null }) => ({
                                         language: v.language,
                                         content_sid: v.content_sid,

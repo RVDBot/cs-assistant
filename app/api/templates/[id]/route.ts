@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { validateVariants } from '@/lib/wa-templates'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -27,6 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const existing = db.prepare('SELECT id FROM wa_templates WHERE id = ?').get(id)
   if (!existing) return NextResponse.json({ error: 'Niet gevonden' }, { status: 404 })
 
+  if (variants && Array.isArray(variants)) {
+    const variantError = validateVariants(variants)
+    if (variantError) return NextResponse.json({ error: variantError }, { status: 400 })
+  }
+
   if (name !== undefined) {
     db.prepare('UPDATE wa_templates SET name = ?, description = ?, variables = ? WHERE id = ?')
       .run(name, description || null, JSON.stringify(variables || []), id)
@@ -39,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     )
     for (const v of variants) {
       if (!v.language || !v.content_sid) continue
-      insertVariant.run(id, v.language, v.content_sid, v.preview || null)
+      insertVariant.run(id, v.language, v.content_sid.trim(), v.preview || null)
     }
   }
 

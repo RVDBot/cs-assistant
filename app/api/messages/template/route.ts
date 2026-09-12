@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { sendWhatsAppTemplate } from '@/lib/twilio'
+import { isContentSid, sendWhatsAppTemplate } from '@/lib/twilio'
 import { log } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
@@ -39,6 +39,18 @@ export async function POST(req: NextRequest) {
     allVariants[0]
 
   const isFallback = variant.language !== conv.detected_language
+
+  // Zonder deze check komt een verkeerd ingevulde Content SID pas bij Twilio boven
+  // water, als kale 'Invalid Parameter' (20422) zonder te noemen welke variant fout is.
+  if (!isContentSid(variant.content_sid)) {
+    log('error', 'twilio', `Template "${template.name}" heeft een ongeldige Content SID`, {
+      language: variant.language,
+      content_sid: variant.content_sid,
+    }, conversation_id)
+    return NextResponse.json({
+      error: `De ${variant.language.toUpperCase()}-variant van "${template.name}" heeft geen geldige Content SID. Zet in Instellingen → Templates de HX-code uit Twilio in dat veld.`,
+    }, { status: 400 })
+  }
 
   // Build content variables map
   const contentVariables: Record<string, string> = {}

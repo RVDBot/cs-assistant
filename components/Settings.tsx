@@ -131,6 +131,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [templates, setTemplates] = useState<(TemplateForm & { id: number })[]>([])
   const [editingTemplate, setEditingTemplate] = useState<TemplateForm | null>(null)
   const [templateSaving, setTemplateSaving] = useState(false)
+  const [templateError, setTemplateError] = useState<string | null>(null)
 
   const emptyTemplate: TemplateForm = {
     name: '', description: '', variables: [], variants: [{ language: 'nl', content_sid: '', preview: '' }],
@@ -444,6 +445,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                 </button>
                               )}
                             </div>
+                            <label className="text-text-tertiary text-[11px] block">Content SID uit Twilio</label>
                             <input
                               value={v.content_sid}
                               onChange={e => setEditingTemplate(p => {
@@ -452,9 +454,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                 variants[i] = { ...variants[i], content_sid: e.target.value }
                                 return { ...p, variants }
                               })}
-                              placeholder="Content SID (HXxxxxx)"
+                              placeholder="HX…"
                               className="w-full bg-surface-1 text-text-primary text-sm px-2 py-1.5 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
                             />
+                            <label className="text-text-tertiary text-[11px] block">Previewtekst (alleen voor intern gebruik)</label>
                             <textarea
                               value={v.preview}
                               onChange={e => setEditingTemplate(p => {
@@ -471,6 +474,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         ))}
                       </div>
 
+                      {templateError && (
+                        <p className="text-danger text-xs bg-danger/10 rounded-lg px-3 py-2">{templateError}</p>
+                      )}
+
                       <div className="flex gap-2 pt-1">
                         <button
                           onClick={async () => {
@@ -478,11 +485,18 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                             setTemplateSaving(true)
                             const method = editingTemplate.id ? 'PATCH' : 'POST'
                             const url = editingTemplate.id ? `/api/templates/${editingTemplate.id}` : '/api/templates'
-                            await fetch(url, {
+                            const res = await fetch(url, {
                               method,
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify(editingTemplate),
                             })
+                            if (!res.ok) {
+                              const data = await res.json().catch(() => ({}))
+                              setTemplateError(data.error || 'Opslaan mislukt')
+                              setTemplateSaving(false)
+                              return
+                            }
+                            setTemplateError(null)
                             await fetchTemplates()
                             setEditingTemplate(null)
                             setTemplateSaving(false)

@@ -37,6 +37,11 @@ export async function sendWhatsAppMessage(to: string, body: string, mediaUrls?: 
   return message.sid
 }
 
+/** Twilio Content SID: 'HX' gevolgd door 32 hex-tekens. Alles anders geeft Twilio 20422. */
+export function isContentSid(value: string | null | undefined): boolean {
+  return typeof value === 'string' && /^HX[0-9a-f]{32}$/i.test(value.trim())
+}
+
 export async function sendWhatsAppTemplate(
   to: string,
   contentSid: string,

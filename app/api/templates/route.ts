@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { validateVariants } from '@/lib/wa-templates'
 
 export async function GET() {
   const db = getDb()
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Naam en minimaal 1 taalvariant vereist' }, { status: 400 })
   }
 
+  const variantError = validateVariants(variants)
+  if (variantError) return NextResponse.json({ error: variantError }, { status: 400 })
+
   const db = getDb()
 
   try {
@@ -39,7 +43,7 @@ export async function POST(req: NextRequest) {
     )
     for (const v of variants) {
       if (!v.language || !v.content_sid) continue
-      insertVariant.run(templateId, v.language, v.content_sid, v.preview || null)
+      insertVariant.run(templateId, v.language, v.content_sid.trim(), v.preview || null)
     }
 
     return NextResponse.json({ id: templateId })

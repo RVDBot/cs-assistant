@@ -481,7 +481,16 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       <div className="flex gap-2 pt-1">
                         <button
                           onClick={async () => {
-                            if (!editingTemplate.name || editingTemplate.variants.some(v => !v.language || !v.content_sid)) return
+                            if (!editingTemplate.name) {
+                              setTemplateError('Geef de template een naam.')
+                              return
+                            }
+                            const incomplete = editingTemplate.variants.filter(v => !v.language || !v.content_sid)
+                            if (incomplete.length > 0) {
+                              setTemplateError('Elke taalvariant heeft zowel een taal als een Content SID nodig. Vul de lege variant aan of verwijder hem.')
+                              return
+                            }
+                            setTemplateError(null)
                             setTemplateSaving(true)
                             const method = editingTemplate.id ? 'PATCH' : 'POST'
                             const url = editingTemplate.id ? `/api/templates/${editingTemplate.id}` : '/api/templates'

@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     }, { status: 400 })
   }
 
+  // Oude rijen kunnen nog spaties bevatten; Twilio accepteert die niet.
+  const contentSid = variant.content_sid.trim()
+
   // Build content variables map
   const contentVariables: Record<string, string> = {}
   const templateVars: { key: string; label: string }[] = JSON.parse(template.variables)
@@ -67,11 +70,11 @@ export async function POST(req: NextRequest) {
 
   let twilioSid: string | null = null
   try {
-    twilioSid = await sendWhatsAppTemplate(conv.customer_phone, variant.content_sid, contentVariables)
+    twilioSid = await sendWhatsAppTemplate(conv.customer_phone, contentSid, contentVariables)
     log('info', 'twilio', `Template "${template.name}" verstuurd (${variant.language})`, {
       sid: twilioSid,
       to: conv.customer_phone,
-      content_sid: variant.content_sid,
+      content_sid: contentSid,
       fallback: isFallback || undefined,
     }, conversation_id)
   } catch (e) {
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
       more_info: err?.moreInfo,
       details: err?.details,
       language: variant.language,
-      content_sid: variant.content_sid,
+      content_sid: contentSid,
       content_variables: contentVariables,
       to: conv.customer_phone,
     }, conversation_id)

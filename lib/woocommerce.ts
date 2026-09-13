@@ -172,9 +172,21 @@ function toOrderDetails(order: WcOrder): OrderDetails {
   }
 }
 
-export async function searchOrders(query: string): Promise<WcOrder[]> {
-  const orders = await wcFetch('orders', { search: query, per_page: '50', orderby: 'date', order: 'desc' }) as WcOrder[]
+export async function searchOrders(query: string, modifiedAfter?: string): Promise<WcOrder[]> {
+  const params: Record<string, string> = { search: query, per_page: '50', orderby: 'date', order: 'desc' }
+  if (modifiedAfter) {
+    // WooCommerce leest zo'n datum standaard in de tijdzone van de site; het watermerk
+    // staat in UTC. Zonder dates_are_gmt mis je het tijdzoneverschil aan bestellingen.
+    params.modified_after = toWcDate(modifiedAfter)
+    params.dates_are_gmt = 'true'
+  }
+  const orders = await wcFetch('orders', params) as WcOrder[]
   return orders
+}
+
+/** WooCommerce verwacht YYYY-MM-DDTHH:MM:SS zonder tijdzone-achtervoegsel. */
+export function toWcDate(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 19)
 }
 
 export async function getOrderById(orderId: number): Promise<WcOrder | null> {
@@ -243,9 +255,21 @@ export async function searchByOrderNumber(orderNumber: string): Promise<WcOrder[
   return searchOrders(orderNumber)
 }
 
-export async function fetchAllOrdersForEmail(email: string): Promise<WcOrder[]> {
+export async function fetchAllOrdersForEmail(email: string, modifiedAfter?: string): Promise<WcOrder[]> {
   if (!email) return []
-  return searchOrders(email)
+  return searchOrders(email, modifiedAfter)
+}
+
+/**
+ * Watermerk voor de volgende synchronisatie: het moment waarop deze begon, min een
+ * marge. Die marge vangt bestellingen op die tijdens de aanroep zelf wijzigen én
+ * klokverschil met de WordPress-host. Dubbel opgehaalde bestellingen worden toch
+ * ge-upsert op wc_order_id.
+ */
+export const SYNC_OVERLAP_MS = 5 * 60 * 1000
+
+export function syncWatermark(startedAt: number = Date.now()): string {
+  return new Date(startedAt - SYNC_OVERLAP_MS).toISOString()
 }
 
 export function mapOrderDetails(orders: WcOrder[]): OrderDetails[] {

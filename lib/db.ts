@@ -194,6 +194,10 @@ function initSchema(db: Database.Database) {
   // Manual language override flag
   try { db.exec(`ALTER TABLE conversations ADD COLUMN language_manual INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+  // Tot wanneer de bestellingen van dit gesprek met WooCommerce zijn gesynchroniseerd
+  // (ISO8601 in UTC). Leeg betekent: nog nooit, dus volledig ophalen.
+  try { db.exec(`ALTER TABLE conversations ADD COLUMN orders_synced_at TEXT`) } catch {}
+
   // WhatsApp template support
   try { db.exec(`ALTER TABLE conversations ADD COLUMN last_inbound_at DATETIME`) } catch {}
   try { db.exec(`ALTER TABLE messages ADD COLUMN template_id INTEGER`) } catch {}

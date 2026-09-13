@@ -8,6 +8,7 @@ import {
   mapOrderDetails,
   extractOrderNumbers,
   extractEmails,
+  syncWatermark,
   WcOrder,
   OrderDetails,
 } from '@/lib/woocommerce'
@@ -70,6 +71,10 @@ function saveOrderData(
   }
 }
 
+function markSynced(db: ReturnType<typeof getDb>, convId: number, watermark: string) {
+  db.prepare('UPDATE conversations SET orders_synced_at = ? WHERE id = ?').run(watermark, convId)
+}
+
 function getDismissedIds(db: ReturnType<typeof getDb>, convId: number): Set<number> {
   const rows = db.prepare('SELECT wc_order_id FROM dismissed_orders WHERE conversation_id = ?').all(convId) as { wc_order_id: number }[]
   return new Set(rows.map(r => r.wc_order_id))
@@ -78,7 +83,9 @@ function getDismissedIds(db: ReturnType<typeof getDb>, convId: number): Set<numb
 // GET: returns cached orders instantly, or auto-detects on first call
 export async function GET(req: NextRequest) {
   const conversationId = req.nextUrl.searchParams.get('conversation_id')
-  const refresh = req.nextUrl.searchParams.get('refresh') === '1'
+  const refreshParam = req.nextUrl.searchParams.get('refresh')
+  const refresh = refreshParam === '1' || refreshParam === 'full'
+  const fullRefresh = refreshParam === 'full'
   const countOnly = req.nextUrl.searchParams.get('count') === '1'
 
   if (!conversationId || !/^\d+$/.test(conversationId)) {
@@ -92,7 +99,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ count: result.count })
   }
 
-  const conv = db.prepare('SELECT customer_phone FROM conversations WHERE id = ?').get(convId) as { customer_phone: string } | undefined
+  const conv = db.prepare('SELECT customer_phone, orders_synced_at FROM conversations WHERE id = ?').get(convId) as
+    { customer_phone: string; orders_synced_at: string | null } | undefined
   if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
 
   const messages = db.prepare('SELECT content FROM messages WHERE conversation_id = ? ORDER BY sent_at ASC').all(convId) as { content: string }[]
@@ -116,12 +124,17 @@ export async function GET(req: NextRequest) {
 
   // Refresh existing linked orders
   if (linked.length > 0 && refresh) {
+    // Watermerk van vóór de aanroep, zodat wijzigingen tijdens de aanroep niet wegvallen
+    const watermark = syncWatermark()
+    // Zonder eerdere synchronisatie is er niets om vanaf te tellen: dan alsnog alles.
+    const modifiedAfter = fullRefresh ? undefined : conv.orders_synced_at || undefined
+
     try {
       const email = linked.find(l => l.customer_email)?.customer_email
       let allOrders: WcOrder[] = []
 
       if (email) {
-        allOrders = await fetchAllOrdersForEmail(email)
+        allOrders = await fetchAllOrdersForEmail(email, modifiedAfter)
       }
 
       const allDetails = mapOrderDetails(allOrders)
@@ -149,8 +162,12 @@ export async function GET(req: NextRequest) {
       }
 
       if (newOrders.length > 0) {
-        log('info', 'systeem', `${newOrders.length} nieuwe bestelling(en) gevonden`, { email }, convId)
+        log('info', 'systeem', `${newOrders.length} nieuwe bestelling(en) gevonden`, { email, since: modifiedAfter }, convId)
       }
+
+      // Pas na een geslaagde ronde opschuiven; anders slaat één time-out een gat
+      // in de geschiedenis dat nooit meer gedicht wordt.
+      if (email) markSynced(db, convId, watermark)
 
       const freshLinked = db.prepare('SELECT wc_order_id, order_number, customer_email, order_data, match_sources FROM customer_orders WHERE conversation_id = ?').all(convId) as DbOrder[]
       const orders = freshLinked.map(l => cachedOrderToDetails(l)).filter((o): o is OrderDetails & { matchSources: string[] } => o !== null)
@@ -178,6 +195,7 @@ export async function GET(req: NextRequest) {
 
   // No linked orders — auto-detect (skip dismissed)
   const dismissedIds = getDismissedIds(db, convId)
+  const detectWatermark = syncWatermark()
 
   try {
     let allOrders: WcOrder[] = []
@@ -256,6 +274,8 @@ export async function GET(req: NextRequest) {
 
     if (allOrders.length > 0) {
       log('info', 'systeem', `${allOrders.length} bestelling(en) automatisch gekoppeld`, { email: foundEmail, source: matchSource }, convId)
+      // Vanaf hier kan er incrementeel gesynchroniseerd worden op dit e-mailadres.
+      if (foundEmail) markSynced(db, convId, detectWatermark)
     }
 
     const savedOrders = db.prepare('SELECT wc_order_id, order_number, customer_email, order_data, match_sources FROM customer_orders WHERE conversation_id = ?').all(convId) as DbOrder[]

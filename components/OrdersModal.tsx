@@ -175,10 +175,12 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
     }
   }
 
-  async function refreshOrders() {
+  // Achtergrondverversing haalt alleen op wat sinds de vorige keer is gewijzigd;
+  // de vernieuwknop haalt bewust alles opnieuw op.
+  async function refreshOrders(mode: '1' | 'full' = '1') {
     setRefreshing(true)
     try {
-      const res = await fetch(`/api/orders?conversation_id=${conversationId}&refresh=1`)
+      const res = await fetch(`/api/orders?conversation_id=${conversationId}&refresh=${mode}`)
       const data = await res.json()
 
       if (data.refreshError) {
@@ -312,7 +314,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
           </h2>
           <div className="flex items-center gap-2">
             {orders.length > 0 && !refreshing && (
-              <button onClick={refreshOrders} className="text-text-tertiary hover:text-text-primary transition-colors" title="Vernieuwen">
+              <button onClick={() => refreshOrders('full')} className="text-text-tertiary hover:text-text-primary transition-colors" title="Alles opnieuw ophalen">
                 <RefreshCw className="w-4 h-4" />
               </button>
             )}

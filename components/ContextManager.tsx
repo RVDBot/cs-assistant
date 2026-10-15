@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Upload, Link, FileText, Trash2, Plus, Loader2, Edit3, Check } from 'lucide-react'
+import { X, Upload, Link, FileText, Trash2, Plus, Loader2, Edit3, Check, Globe } from 'lucide-react'
 
 interface ContextFile {
   id: number
@@ -21,6 +21,12 @@ interface Props {
   onClose: () => void
 }
 
+interface ImportStatus {
+  state: 'idle' | 'running' | 'done' | 'error'
+  message?: string
+  factCount?: number
+}
+
 export default function ContextManager({ onClose }: Props) {
   const [tab, setTab] = useState<'files' | 'links' | 'tone'>('files')
   const [files, setFiles] = useState<ContextFile[]>([])
@@ -32,12 +38,45 @@ export default function ContextManager({ onClose }: Props) {
   const [urlInput, setUrlInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importStatus, setImportStatus] = useState<ImportStatus>({ state: 'idle' })
+  const [toneDraft, setToneDraft] = useState('')
 
   useEffect(() => {
     loadFiles()
     loadLinks()
     loadTone()
+    loadImport()
   }, [])
+
+  // Zolang de analyse loopt elke 5 seconden de status ophalen
+  useEffect(() => {
+    if (importStatus.state !== 'running') return
+    const t = setInterval(loadImport, 5000)
+    return () => clearInterval(t)
+  }, [importStatus.state])
+
+  async function loadImport() {
+    const res = await fetch('/api/knowledge/import-website')
+    const data = await res.json()
+    setImportStatus(data.status)
+    setToneDraft(data.toneDraft || '')
+  }
+
+  async function startImport() {
+    const res = await fetch('/api/knowledge/import-website', { method: 'POST' })
+    const data = await res.json()
+    if (data.status) setImportStatus(data.status)
+  }
+
+  async function discardDraft() {
+    await fetch('/api/knowledge/import-website', { method: 'DELETE' })
+    setToneDraft('')
+  }
+
+  async function adoptDraft() {
+    setToneEdited(toneDraft)
+    await discardDraft()
+  }
 
   async function loadFiles() {
     const res = await fetch('/api/context/files')
@@ -238,6 +277,44 @@ export default function ContextManager({ onClose }: Props) {
           {/* Tone tab */}
           {tab === 'tone' && (
             <div className="space-y-4">
+              <div className="bg-surface-2 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-text-secondary text-xs">
+                    Laat Claude de website lezen voor een concept-tone-of-voice en feiten voor de kennisbank.
+                  </p>
+                  <button
+                    onClick={startImport}
+                    disabled={importStatus.state === 'running'}
+                    className="flex items-center gap-1.5 shrink-0 bg-accent disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-accent-hover transition-colors"
+                  >
+                    {importStatus.state === 'running' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                    {importStatus.state === 'running' ? 'Bezig...' : 'Website analyseren'}
+                  </button>
+                </div>
+                {importStatus.state === 'running' && (
+                  <p className="text-text-tertiary text-[11px]">Dit duurt een paar minuten. Je kunt dit venster sluiten.</p>
+                )}
+                {importStatus.state === 'done' && (
+                  <p className="text-text-tertiary text-[11px]">Klaar: {importStatus.factCount ?? 0} feiten toegevoegd aan de kennisbank.</p>
+                )}
+                {importStatus.state === 'error' && (
+                  <p className="text-danger text-[11px]">{importStatus.message || 'Analyse mislukt'}</p>
+                )}
+                {toneDraft && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-text-tertiary text-xs font-medium">Concept van de website</p>
+                    <pre className="whitespace-pre-wrap text-text-primary text-xs bg-surface-0 rounded-lg p-3 max-h-60 overflow-y-auto font-sans">{toneDraft}</pre>
+                    <div className="flex gap-2">
+                      <button onClick={adoptDraft} className="text-xs px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors">
+                        Overnemen in editor
+                      </button>
+                      <button onClick={discardDraft} className="text-xs px-3 py-1.5 rounded-lg text-text-tertiary hover:text-text-primary transition-colors">
+                        Verwerpen
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <p className="text-text-tertiary text-xs">Beschrijf de gewenste toon en stijl voor AI-antwoorden. Bv: &quot;Vriendelijk en informeel, gebruik &lsquo;je/jij&rsquo;, max 3 alinea&apos;s...&quot;</p>
               <textarea
                 value={toneEdited}

@@ -214,6 +214,44 @@ function initSchema(db: Database.Database) {
     `)
   } catch {}
 
+  // Kennisbank: losse feiten die de AI leert uit verstuurde antwoorden en correcties
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_facts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic           TEXT NOT NULL,
+      fact            TEXT NOT NULL,
+      source          TEXT NOT NULL,
+      conversation_id INTEGER,
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_knowledge_facts_topic ON knowledge_facts(topic);
+
+    -- Het laatste AI-concept per gesprek en de verbeterinstructies erop, zodat bij
+    -- versturen zichtbaar is wat het team aan het concept veranderde.
+    CREATE TABLE IF NOT EXISTS ai_drafts (
+      conversation_id INTEGER PRIMARY KEY,
+      draft_dutch     TEXT NOT NULL,
+      instructions    TEXT NOT NULL DEFAULT '[]',
+      created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    );
+  `)
+
+  // De oude vaste modelkeuzes (Opus 4.6 / Sonnet 4.6 / Haiku 4.5) waren geen bewuste
+  // vastzetting maar de enige opties: eenmalig omzetten naar 'auto' (nieuwste Opus).
+  try {
+    const migrated = db.prepare("SELECT value FROM settings WHERE key = 'model_auto_migrated'").get()
+    if (!migrated) {
+      db.exec(`
+        UPDATE settings SET value = 'auto'
+        WHERE key = 'claude_model' AND value IN ('claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001');
+        INSERT INTO settings (key, value) VALUES ('model_auto_migrated', '1');
+      `)
+    }
+  } catch {}
+
   // Gesprekken zonder naam die al bestellingen hebben: naam uit het factuuradres van
   // de oudst gekoppelde bestelling. Idempotent, raakt alleen gesprekken zonder naam.
   try {

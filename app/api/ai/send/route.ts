@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { sendEmail, getAccountForConversation } from '@/lib/email'
-import { updateKnowledgeFromAnswer } from '@/lib/claude'
-import { getKnowledgeFile, saveKnowledgeFile, KNOWLEDGE_TOPICS } from '@/lib/knowledge'
+import { takeDraft, learnFromInteraction, lastInboundDutch } from '@/lib/learning'
 import { log } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
@@ -81,40 +80,23 @@ export async function POST(req: NextRequest) {
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?
   `).run(answer_customer_lang.slice(0, 100), conversation_id)
 
-  // Async: update knowledge base from this interaction (always in Dutch)
-  const lastInbound = db.prepare(`
-    SELECT content, content_dutch FROM messages WHERE conversation_id = ? AND direction = 'inbound'
-    ORDER BY sent_at DESC LIMIT 1
-  `).get(conversation_id) as { content: string; content_dutch: string | null } | undefined
-
-  if (lastInbound && answer_dutch) {
-    const customerMessageDutch = lastInbound.content_dutch || lastInbound.content
-    updateKnowledgeInBackground(customerMessageDutch, answer_dutch, conversation_id).catch(console.error)
+  // Op de achtergrond leren van wat het team aan het AI-concept veranderde. Een
+  // ongewijzigd verstuurd concept leert niets nieuws: dat kwam al uit kennisbank of site.
+  const draft = takeDraft(conversation_id)
+  const customerMessage = lastInboundDutch(conversation_id)
+  const finalAnswer = answer_dutch || answer_customer_lang
+  const edited = !!draft && (draft.instructions.length > 0 || draft.draft.trim() !== finalAnswer.trim())
+  if (customerMessage && edited) {
+    learnFromInteraction({
+      conversationId: conversation_id,
+      customerMessage,
+      finalAnswer,
+      aiDraft: draft.draft,
+      instructions: draft.instructions,
+      origin: 'ai',
+    })
   }
 
   log('info', 'ai', 'AI-antwoord verstuurd', { demo: !sent, channel: sendChannel }, conversation_id)
   return NextResponse.json({ ok: true, twilio_sid: twilioSid })
-}
-
-async function updateKnowledgeInBackground(customerMessage: string, agentAnswer: string, conversationId: number) {
-  // Pick the most likely topic using Claude (simple heuristic here)
-  const lowerMsg = customerMessage.toLowerCase()
-  const topicSlug = KNOWLEDGE_TOPICS.find(t => {
-    const keywords = t.title.toLowerCase().split(/\s+/)
-    return keywords.some(k => k.length > 3 && lowerMsg.includes(k))
-  })?.slug || 'troubleshooting'
-
-  const topic = KNOWLEDGE_TOPICS.find(t => t.slug === topicSlug)
-  if (!topic) return
-
-  const current = getKnowledgeFile(topicSlug)
-  const updated = await updateKnowledgeFromAnswer({
-    customerMessage,
-    agentAnswer,
-    topic: topic.title,
-    currentContent: current.content,
-    conversationId,
-  })
-
-  saveKnowledgeFile(topicSlug, updated)
 }

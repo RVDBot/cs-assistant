@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { generateAnswer, type ImageAttachment } from '@/lib/claude'
 import { readMediaFile } from '@/lib/media'
+import { parseDbTime } from '@/lib/conversation-context'
+import { log } from '@/lib/logger'
+import { recordDraft } from '@/lib/learning'
 
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
@@ -14,19 +17,20 @@ export async function POST(req: NextRequest) {
 
   const db = getDb()
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id) as {
-    id: number; customer_phone: string; detected_language: string
+    id: number; customer_phone: string | null; customer_name: string | null; detected_language: string
   } | undefined
 
   if (!conv) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Get all messages for context
   const messages = db.prepare(`
-    SELECT direction, content, content_dutch, media_url FROM messages
+    SELECT direction, content, content_dutch, content_customer_lang, media_url, sent_at, channel FROM messages
     WHERE conversation_id = ?
     ORDER BY sent_at ASC
-  `).all(conversation_id) as { direction: string; content: string; content_dutch: string | null; media_url: string | null }[]
+  `).all(conversation_id) as {
+    direction: 'inbound' | 'outbound'; content: string; content_dutch: string | null; content_customer_lang: string | null
+    media_url: string | null; sent_at: string; channel: string
+  }[]
 
-  // Last inbound message
   const lastInbound = [...messages].reverse().find(m => m.direction === 'inbound')
   if (!lastInbound) {
     return NextResponse.json({ error: 'No customer message found' }, { status: 400 })
@@ -45,31 +49,29 @@ export async function POST(req: NextRequest) {
     } catch {}
   }
 
-  // Build conversation history for Claude (last 20 messages)
-  const history = messages.slice(-20).map(m => ({
-    role: m.direction === 'inbound' ? 'user' as const : 'assistant' as const,
-    content: m.direction === 'inbound'
-      ? `Customer (${conv.detected_language}): ${m.content}\nTranslation (NL): ${m.content_dutch || m.content}`
-      : m.content,
+  // De laatste 30 berichten met tijdstempel. Van onze berichten telt wat de klant
+  // daadwerkelijk zag (de vertaalde versie).
+  const transcript = messages.slice(-30).map(m => ({
+    direction: m.direction,
+    content: m.direction === 'outbound' ? (m.content_customer_lang || m.content) : m.content,
+    contentDutch: m.content_dutch,
+    sentAt: parseDbTime(m.sent_at),
   }))
-
-  // Most recent outbound message (last reply sent to customer)
-  const lastOutbound = [...messages].reverse().find(m => m.direction === 'outbound')
 
   try {
     const result = await generateAnswer({
-      customerMessage: lastInbound.content,
-      customerMessageDutch: lastInbound.content_dutch || lastInbound.content,
+      transcript,
       customerLanguage: conv.detected_language,
-      conversationHistory: history.slice(0, -1),
-      lastOutboundMessage: lastOutbound?.content || null,
+      customerName: conv.customer_name,
+      channel: lastInbound.channel === 'email' ? 'email' : 'whatsapp',
       conversationId: conv.id,
       preContext: pre_context || '',
       images,
     })
+    recordDraft(conv.id, result.dutch)
     return NextResponse.json(result)
   } catch (e) {
-    console.error('AI generate error:', e)
+    log('error', 'ai', 'Antwoord genereren mislukt', { error: e instanceof Error ? e.message : String(e) }, conv.id)
     return NextResponse.json({ error: 'Er ging iets mis bij het genereren van een antwoord.' }, { status: 500 })
   }
 }

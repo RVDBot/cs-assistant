@@ -1,27 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getDb } from './db'
 import { getKnowledgeContext } from './knowledge'
+import { getClient, resolveModel, requestParams, webTools, getWebsiteDomain, type Effort } from './models'
+import { formatNow, formatTimestamp, dayPart, shouldGreet, type DayPart } from './conversation-context'
 
-function getClient() {
-  const db = getDb()
-  const apiKey =
-    (db.prepare('SELECT value FROM settings WHERE key = ?').get('anthropic_api_key') as { value: string } | undefined)?.value ||
-    process.env.ANTHROPIC_API_KEY ||
-    ''
-  if (!apiKey) throw new Error('Anthropic API key not configured')
-  return new Anthropic({ apiKey })
-}
-
-function getModel() {
-  const db = getDb()
-  return (
-    (db.prepare('SELECT value FROM settings WHERE key = ?').get('claude_model') as { value: string } | undefined)?.value ||
-    process.env.CLAUDE_MODEL ||
-    'claude-opus-4-6'
-  )
-}
-
-function logTokens(conversationId: number | null | undefined, callType: string, usage: { input_tokens: number; output_tokens: number }) {
+export function logTokens(conversationId: number | null | undefined, callType: string, usage: { input_tokens: number; output_tokens: number }) {
   try {
     const db = getDb()
     db.prepare(`
@@ -55,93 +38,137 @@ function getContextLinks(): string {
   return links.map(l => `### Link: ${l.title || l.url}\n${l.content}`).join('\n\n')
 }
 
-export async function detectLanguage(text: string, conversationId?: number): Promise<string> {
-  const client = getClient()
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 10,
-    messages: [
-      {
-        role: 'user',
-        content: `Detect the language of this text and respond with ONLY the ISO 639-1 two-letter language code (e.g. en, nl, fr, de, es, it, pt, ar, tr, pl, ru). Text: "${text}"`,
-      },
-    ],
+function textOf(response: Anthropic.Message): string {
+  return response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .trim()
+}
+
+function assertNotRefused(response: Anthropic.Message) {
+  if (response.stop_reason === 'refusal') {
+    throw new Error('Claude heeft dit verzoek geweigerd')
+  }
+}
+
+// Korte, losse taken (taal herkennen, vertalen) op lage effort.
+async function simpleText(prompt: string, maxTokens: number, callType: string, conversationId?: number): Promise<string> {
+  const model = await resolveModel()
+  const response = await getClient().messages.create({
+    model,
+    max_tokens: maxTokens,
+    ...requestParams(model, 'low'),
+    messages: [{ role: 'user', content: prompt }],
   })
-  logTokens(conversationId, 'detect_language', response.usage)
-  const code = (response.content[0] as { text: string }).text.trim().toLowerCase().slice(0, 2)
+  logTokens(conversationId, callType, response.usage)
+  assertNotRefused(response)
+  return textOf(response)
+}
+
+export async function detectLanguage(text: string, conversationId?: number): Promise<string> {
+  const reply = await simpleText(
+    `Detect the language of this text and respond with ONLY the ISO 639-1 two-letter language code (e.g. en, nl, fr, de, es, it, pt, ar, tr, pl, ru). Text: "${text}"`,
+    2000,
+    'detect_language',
+    conversationId,
+  )
+  const code = reply.toLowerCase().match(/\b[a-z]{2}\b/)?.[0]
   return code || 'en'
 }
 
 export async function translateToDutch(text: string, fromLang: string, conversationId?: number): Promise<string> {
   if (fromLang === 'nl') return text
-  const client = getClient()
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 2048,
-    messages: [
-      {
-        role: 'user',
-        content: `Translate the following text to Dutch. Return ONLY the translation, nothing else.\n\nText: ${text}`,
-      },
-    ],
-  })
-  logTokens(conversationId, 'translate_inbound', response.usage)
-  return (response.content[0] as { text: string }).text.trim()
+  return simpleText(
+    `Translate the following text to Dutch. Return ONLY the translation, nothing else.\n\nText: ${text}`,
+    8000,
+    'translate_inbound',
+    conversationId,
+  )
 }
 
-export async function translateToLanguage(text: string, targetLang: string, conversationId?: number): Promise<string> {
-  if (targetLang === 'nl') return text
-  const client = getClient()
-  const langNames: Record<string, string> = {
-    en: 'English', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian',
-    pt: 'Portuguese', ar: 'Arabic', tr: 'Turkish', pl: 'Polish', ru: 'Russian',
-    zh: 'Chinese', ja: 'Japanese', ko: 'Korean',
-  }
-  const langName = langNames[targetLang] || targetLang
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 2048,
-    messages: [
-      {
-        role: 'user',
-        content: `Translate the following Dutch text to ${langName}. Return ONLY the translation, nothing else.\n\nText: ${text}`,
-      },
-    ],
-  })
-  logTokens(conversationId, 'translate_outbound', response.usage)
-  return (response.content[0] as { text: string }).text.trim()
-}
-
-// Forces Claude to return the answer as structured tool input, instead of relying on
-// a "respond with JSON only" prompt instruction (which it doesn't always follow).
+// Het antwoord komt terug als invoer van deze tool. `strict` garandeert dat de velden
+// kloppen; de aanroep zelf wordt gevraagd in de prompt (tool_choice 'auto'), omdat
+// nieuwere modellen een geforceerde tool-keuze weigeren.
 const ANSWER_TOOL: Anthropic.Tool = {
   name: 'provide_answer',
-  description: 'Provide the drafted customer service answer.',
+  description: 'Deliver the final drafted customer service reply. Call this exactly once, after any website lookups.',
+  strict: true,
   input_schema: {
     type: 'object',
     properties: {
       answer_dutch: {
         type: 'string',
-        description: 'The answer in Dutch, for the customer service employee to review',
+        description: 'The reply in Dutch, for the customer service employee to review',
       },
       answer_customer_lang: {
         type: 'string',
-        description: "The same answer translated to the customer's language",
+        description: "The same reply in the customer's language",
       },
     },
     required: ['answer_dutch', 'answer_customer_lang'],
+    additionalProperties: false,
   },
 }
 
-function extractAnswer(response: Anthropic.Message): { dutch: string; customerLang: string } {
-  const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-  const input = (toolUse?.input as { answer_dutch?: string; answer_customer_lang?: string } | undefined) || {}
-  return { dutch: input.answer_dutch || '', customerLang: input.answer_customer_lang || '' }
+function extractAnswer(response: Anthropic.Message): { dutch: string; customerLang: string } | null {
+  const toolUse = response.content.find(
+    (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === ANSWER_TOOL.name,
+  )
+  if (!toolUse) return null
+  const input = toolUse.input as { answer_dutch?: string; answer_customer_lang?: string }
+  if (!input.answer_dutch && !input.answer_customer_lang) return null
+  return { dutch: input.answer_dutch || '', customerLang: input.answer_customer_lang || input.answer_dutch || '' }
 }
 
-interface ConversationHistory {
-  role: 'user' | 'assistant'
+// Draait tot Claude provide_answer aanroept. Tussendoor kan Claude op de website zoeken;
+// die tools draaien bij Anthropic, dus hier hoeft alleen pause_turn hervat te worden.
+async function runAnswer(params: {
+  system: string
+  styleExamples?: string
+  userContent: Anthropic.ContentBlockParam[]
+  effort: Effort
+  callType: string
+  conversationId?: number
+}): Promise<{ dutch: string; customerLang: string }> {
+  const model = await resolveModel()
+  const client = getClient()
+  const tools: Anthropic.ToolUnion[] = [ANSWER_TOOL, ...webTools(model, getWebsiteDomain())]
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: params.userContent }]
+
+  for (let round = 0; round < 6; round++) {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 16000,
+      ...requestParams(model, params.effort),
+      system: [
+        { type: 'text', text: params.system, cache_control: { type: 'ephemeral' } },
+        // Na het cachepunt: verandert bij elk verstuurd antwoord
+        ...(params.styleExamples ? [{ type: 'text' as const, text: params.styleExamples }] : []),
+      ],
+      messages,
+      tools,
+      tool_choice: { type: 'auto' },
+    })
+    logTokens(params.conversationId, params.callType, response.usage)
+    assertNotRefused(response)
+
+    const answer = extractAnswer(response)
+    if (answer) return answer
+
+    messages.push({ role: 'assistant', content: response.content })
+    if (response.stop_reason !== 'pause_turn') {
+      messages.push({ role: 'user', content: 'Lever het antwoord nu aan via de provide_answer tool.' })
+    }
+  }
+  throw new Error('Claude gaf geen antwoord terug')
+}
+
+export interface TranscriptMessage {
+  direction: 'inbound' | 'outbound'
   content: string
+  contentDutch: string | null
+  sentAt: Date
 }
 
 export interface ImageAttachment {
@@ -149,83 +176,112 @@ export interface ImageAttachment {
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 }
 
+const GREETING_BY_DAYPART: Record<DayPart, string> = {
+  nacht: 'Hallo',
+  ochtend: 'Goedemorgen',
+  middag: 'Goedemiddag',
+  avond: 'Goedenavond',
+}
+
+function buildSystemPrompt(): string {
+  const tone = getToneOfVoice()
+  const knowledge = getKnowledgeContext()
+  const files = getContextFiles()
+  const links = getContextLinks()
+  const domain = getWebsiteDomain()
+
+  return `You draft replies for the customer service team of ${domain}, a web shop. A team member reviews every draft before it is sent.
+
+${tone ? `## Tone of voice\n${tone}\n` : ''}
+${knowledge ? `## Knowledge base\n${knowledge}\n` : ''}
+${files ? `## Company documents\n${files}\n` : ''}
+${links ? `## Reference pages\n${links}\n` : ''}
+## Looking things up on ${domain}
+You can search and open pages on ${domain} with web_search and web_fetch. Product details, sizes, prices, stock, shipping, returns, FAQ and help articles live there. When the customer asks about any of that, look it up before answering instead of relying on memory, and base the facts in your reply on what you find. If the knowledge base and the website disagree, the knowledge base wins: it holds corrections from the team. Never invent facts, prices, delivery times or policies; if you cannot find something, say the team will check and get back to the customer. Include a link to a specific page only when it genuinely helps the customer (for example a product page or a help article), never as a substitute for answering.
+
+## How these conversations work
+Most conversations are WhatsApp chats: one ongoing thread, not a series of separate letters. Reply the way an experienced colleague types in a chat: direct, natural, and short. Answer what was asked, do not repeat what was already said earlier in the thread, and do not sign off with a name or closing formula. Whether to open with a greeting is decided for you per request; follow that instruction exactly.
+
+## Output
+Deliver the reply by calling provide_answer once: answer_dutch is the reply in Dutch for the team member, answer_customer_lang is the same reply in the customer's language (identical to the Dutch text when the customer writes Dutch).`
+}
+
+// Recente antwoorden van het team als stijlvoorbeeld. Alleen inhoudelijke berichten
+// via hetzelfde kanaal; we tonen wat er in het Nederlands is opgesteld.
+function getStyleExamples(channel: 'whatsapp' | 'email', excludeConversationId?: number): string {
+  const rows = getDb().prepare(`
+    SELECT content FROM messages
+    WHERE direction = 'outbound' AND status != 'demo' AND channel = ? AND template_id IS NULL
+      AND LENGTH(content) BETWEEN 40 AND 1200 AND conversation_id != ?
+      AND sent_at > datetime('now', '-60 days')
+    ORDER BY sent_at DESC LIMIT 8
+  `).all(channel, excludeConversationId ?? -1) as { content: string }[]
+  if (rows.length < 3) return ''
+  return `## Recent replies the team sent (style reference only)
+These show how the team actually writes: length, warmth, word choice, how they open and close. Match that style. Do not copy their content; facts in them may not apply to this customer.
+
+${rows.map((r, i) => `<example ${i + 1}>\n${r.content}\n</example ${i + 1}>`).join('\n\n')}`
+}
+
+function transcriptLines(transcript: TranscriptMessage[]): string {
+  return transcript
+    .map(m => {
+      const when = formatTimestamp(m.sentAt)
+      if (m.direction === 'outbound') return `[${when}] Wij: ${m.content}`
+      const dutch = m.contentDutch && m.contentDutch !== m.content ? `\n    (NL: ${m.contentDutch})` : ''
+      return `[${when}] Klant: ${m.content}${dutch}`
+    })
+    .join('\n')
+}
+
 export async function generateAnswer(params: {
-  customerMessage: string
-  customerMessageDutch: string
+  transcript: TranscriptMessage[]
   customerLanguage: string
-  conversationHistory: ConversationHistory[]
-  lastOutboundMessage?: string | null
-  previousConversations?: string
+  customerName: string | null
+  channel: 'whatsapp' | 'email'
   conversationId?: number
   preContext?: string
   images?: ImageAttachment[]
 }): Promise<{ dutch: string; customerLang: string }> {
-  const client = getClient()
-  const tone = getToneOfVoice()
-  const contextFiles = getContextFiles()
-  const contextLinks = getContextLinks()
-  const knowledgeContext = await getKnowledgeContext()
+  const now = new Date()
+  const greet = shouldGreet(params.transcript, now, params.channel)
+  const part = dayPart(now)
+  const firstName = params.customerName?.trim().split(/\s+/)[0]
 
-  const systemPrompt = `You are a customer service assistant. You help customer service employees craft excellent responses to customers.
+  const greetingRule = params.channel === 'email'
+    ? `This is an email. Open with a short greeting${firstName ? ` using the name ${firstName}` : ''} and end with a brief, friendly closing, as is normal for email.`
+    : greet
+      ? `Open with a short greeting that fits the time of day (in Dutch that would be "${GREETING_BY_DAYPART[part]}")${firstName ? `, you may use the name ${firstName}` : ''}. Do not thank them for their message.`
+      : 'Do NOT open with a greeting, and do not thank them for their message or for waiting. The chat is ongoing: reply directly to what they said.'
 
-${tone ? `## Tone of Voice\n${tone}\n` : ''}
+  const pre = params.preContext?.trim()
+  const text = `Current time: ${formatNow(now)} (${part}), Dutch time.
+Channel: ${params.channel === 'email' ? 'email' : 'WhatsApp'}. Customer language: ${params.customerLanguage}.${params.customerName ? ` Customer name: ${params.customerName}.` : ''}
 
-${knowledgeContext ? `## Knowledge Base\n${knowledgeContext}\n` : ''}
+## Conversation so far (oldest first)
+${transcriptLines(params.transcript)}
 
-${contextFiles ? `## Company Documents\n${contextFiles}\n` : ''}
+## Instructions for this reply
+- Reply to the customer's most recent message(s); earlier messages are context.
+- ${greetingRule}
+${params.images?.length ? `- The customer sent ${params.images.length} image(s), attached above. Look at them and use what you see. Never say you cannot view images.\n` : ''}${pre ? `- Instructions from the team member, follow these strictly:\n${pre}\n` : ''}`
 
-${contextLinks ? `## Reference Links\n${contextLinks}\n` : ''}
-
-${params.preContext?.trim() ? `## Agent Instructions (MUST follow these)\n${params.preContext.trim()}\n` : ''}
-
-## Your Task
-Based on the customer's message and conversation history, generate a helpful, professional response in Dutch (for the customer service employee to review). The customer writes in ${params.customerLanguage}.
-
-**Message priority:** The most recent customer message is the primary question to answer. The most recent reply from the customer service agent is important secondary context. Earlier conversation history is background only.
-${params.images?.length ? `\n**Attached image(s):** The customer also sent ${params.images.length} image(s), included with this message. Look at them carefully (e.g. screenshots of errors, photos of products) and use what you see to inform your reply. Never tell the customer you cannot view the image.` : ''}
-${params.preContext?.trim() ? '\n**Important:** You have Agent Instructions above — apply them strictly when drafting your response.' : ''}
-
-Use the \`provide_answer\` tool to give your response: the answer in Dutch for the employee, and the same answer translated to the customer's language (${params.customerLanguage}).`
-
-  const lastUserText = [
-    params.lastOutboundMessage
-      ? `[Most recent CS reply]: ${params.lastOutboundMessage}`
-      : null,
-    `[Most recent customer message (original)]: ${params.customerMessage}`,
-    `[Most recent customer message (Dutch)]: ${params.customerMessageDutch}`,
-    'Generate a response.',
-  ].filter(Boolean).join('\n')
-
-  const lastUserContent: Anthropic.ContentBlockParam[] = [
+  const userContent: Anthropic.ContentBlockParam[] = [
     ...(params.images || []).map((img): Anthropic.ImageBlockParam => ({
       type: 'image',
       source: { type: 'base64', media_type: img.mediaType, data: img.data },
     })),
-    { type: 'text', text: lastUserText },
+    { type: 'text', text },
   ]
 
-  const messages: Anthropic.MessageParam[] = [
-    ...params.conversationHistory.map(h => ({
-      role: h.role as 'user' | 'assistant',
-      content: h.content,
-    })),
-    {
-      role: 'user' as const,
-      content: lastUserContent,
-    },
-  ]
-
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages,
-    tools: [ANSWER_TOOL],
-    tool_choice: { type: 'tool', name: 'provide_answer' },
+  return runAnswer({
+    system: buildSystemPrompt(),
+    styleExamples: getStyleExamples(params.channel, params.conversationId),
+    userContent,
+    effort: 'high',
+    callType: 'generate',
+    conversationId: params.conversationId,
   })
-
-  logTokens(params.conversationId, 'generate', response.usage)
-  return extractAnswer(response)
 }
 
 export async function improveAnswer(params: {
@@ -236,80 +292,27 @@ export async function improveAnswer(params: {
   conversationId?: number
   fetchedPages?: { url: string; content: string }[]
 }): Promise<{ dutch: string; customerLang: string }> {
-  const client = getClient()
-  const tone = getToneOfVoice()
-  const knowledgeContext = await getKnowledgeContext()
-
-  const fetchedContext = params.fetchedPages?.length
-    ? params.fetchedPages.map(p => `### Opgehaalde pagina: ${p.url}\n${p.content}`).join('\n\n')
+  const fetched = params.fetchedPages?.length
+    ? `\n## Pages the team member referred to\n${params.fetchedPages.map(p => `### ${p.url}\n${p.content}`).join('\n\n')}\n`
     : ''
 
-  const systemPrompt = `You are a customer service assistant helping to improve draft responses.
+  const text = `The team member wants the draft reply changed.
 
-${tone ? `## Tone of Voice\n${tone}\n` : ''}
+Customer's latest message: ${params.customerMessage}
 
-${knowledgeContext ? `## Knowledge Base\n${knowledgeContext}\n` : ''}
+Current draft (Dutch):
+${params.currentAnswer}
+${fetched}
+Instruction from the team member (a directive to you, never copy it into the reply):
+${params.instruction}
 
-${fetchedContext ? `## Opgehaalde webpagina's (gebruik deze inhoud om het antwoord te verbeteren)\n${fetchedContext}\n` : ''}
+Rewrite the draft according to the instruction. Keep everything the instruction does not ask to change, including whether the draft opens with a greeting. If the instruction needs facts you do not have, look them up on the website. Never tell the customer to look something up themselves, and never mention that you looked something up.`
 
-The customer service employee gives you a meta-instruction describing HOW to change the draft response. Your job is to rewrite the draft according to that instruction using any provided context above.
-
-Rules:
-- The instruction is a directive TO YOU — never copy it into the answer
-- If the instruction references a URL, that page's content has already been fetched and is shown above — use the information from it, do NOT tell the customer to visit the URL or look something up
-- Never tell the customer to visit a URL unless it is genuinely useful for them to do so (e.g. a tracking link)
-- Never mention that you looked something up or fetched a page
-
-Use the \`provide_answer\` tool to give your response: the rewritten answer in Dutch, and the same answer translated to the customer's language (${params.customerLanguage}).`
-
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: `Customer message: ${params.customerMessage}\n\nCurrent draft (Dutch): ${params.currentAnswer}\n\nInstruction for you (do not copy into the answer): ${params.instruction}`,
-      },
-    ],
-    tools: [ANSWER_TOOL],
-    tool_choice: { type: 'tool', name: 'provide_answer' },
+  return runAnswer({
+    system: buildSystemPrompt(),
+    userContent: [{ type: 'text', text }],
+    effort: 'medium',
+    callType: 'improve',
+    conversationId: params.conversationId,
   })
-
-  logTokens(params.conversationId, 'improve', response.usage)
-  return extractAnswer(response)
-}
-
-export async function updateKnowledgeFromAnswer(params: {
-  customerMessage: string
-  agentAnswer: string
-  topic: string
-  currentContent: string
-  conversationId?: number
-}): Promise<string> {
-  const client = getClient()
-
-  const response = await client.messages.create({
-    model: getModel(),
-    max_tokens: 4096,
-    system: `Je beheert een kennisbank voor klantenservice, volledig geschreven in het Nederlands en in Markdown-formaat. Je krijgt een bestaand kennisbestand en een nieuwe klantinteractie (al vertaald naar het Nederlands). Werk het kennisbestand bij met eventuele nieuwe informatie, correcties of verbeteringen. Voeg alleen echt nieuwe informatie toe; herhaal geen bestaande inhoud. Schrijf altijd in correct Nederlands, gebruik Markdown-opmaak (koppen, opsommingen, vetgedrukte tekst waar passend). Geef ALLEEN de bijgewerkte bestandsinhoud terug, geen uitleg of opmerkingen.`,
-    messages: [
-      {
-        role: 'user',
-        content: `Topic: ${params.topic}
-
-Current knowledge file content:
-${params.currentContent || '(empty)'}
-
-New customer interaction:
-Customer: ${params.customerMessage}
-Agent: ${params.agentAnswer}
-
-Return the updated knowledge file content in Markdown. Return ONLY the markdown content, no explanations.`,
-      },
-    ],
-  })
-
-  logTokens(params.conversationId, 'knowledge_update', response.usage)
-  return (response.content[0] as { text: string }).text.trim()
 }

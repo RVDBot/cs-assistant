@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db'
 import { improveAnswer } from '@/lib/claude'
 import { validateExternalUrl } from '@/lib/security'
 import { log } from '@/lib/logger'
+import { recordInstruction } from '@/lib/learning'
 
 function extractUrls(text: string): string[] {
   return text.match(/https?:\/\/[^\s]+/g) || []
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
       conversationId: Number(conversation_id),
       fetchedPages,
     })
+    recordInstruction(Number(conversation_id), instruction, current_answer)
     return NextResponse.json(result)
   } catch (e) {
     log('error', 'ai', 'Antwoord verbeteren mislukt', { error: e instanceof Error ? e.message : String(e) }, Number(conversation_id))

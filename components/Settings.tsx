@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack, Truck } from 'lucide-react'
 import { NotificationsSettings } from './NotificationsSettings'
 
-const CLAUDE_MODELS = [
-  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Meest capabel)' },
-  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Snel & capabel)' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Snelst & goedkoopst)' },
-]
+interface ModelOption {
+  id: string
+  name: string
+}
 
 function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
   label: string
@@ -70,7 +69,8 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     twilio_phone_number: '',
     base_url: '',
     anthropic_api_key: '',
-    claude_model: 'claude-opus-4-6',
+    claude_model: 'auto',
+    website_domain: '',
     app_password: '',
     wc_store_url: '',
     wc_consumer_key: '',
@@ -86,6 +86,8 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
   const [showWcSecret, setShowWcSecret] = useState(false)
   const [showMyParcelKey, setShowMyParcelKey] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [models, setModels] = useState<ModelOption[]>([])
+  const [latestOpus, setLatestOpus] = useState<string | null>(null)
   const [tokenStats, setTokenStats] = useState<{
     total_input: number
     total_output: number
@@ -179,6 +181,11 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
       setTemplates(templatesData)
       setLoading(false)
     })
+    // Los van de rest: de Anthropic API kan traag of onbereikbaar zijn
+    fetch('/api/models').then(r => r.json()).then(data => {
+      setModels(data.models || [])
+      setLatestOpus(data.latestOpus || null)
+    }).catch(() => {})
   }, [])
 
   async function save() {
@@ -837,10 +844,32 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       onChange={e => setSettings(p => ({ ...p, claude_model: e.target.value }))}
                       className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent"
                     >
-                      {CLAUDE_MODELS.map(m => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
+                      <option value="auto">
+                        Automatisch: nieuwste Opus{latestOpus ? ` (nu ${models.find(m => m.id === latestOpus)?.name || latestOpus})` : ''}
+                      </option>
+                      {/* Vastgezet model dat niet (meer) in de lijst staat toch tonen */}
+                      {settings.claude_model !== 'auto' && !models.some(m => m.id === settings.claude_model) && (
+                        <option value={settings.claude_model}>{settings.claude_model}</option>
+                      )}
+                      {models.map(m => (
+                        <option key={m.id} value={m.id}>{m.name} (vastzetten)</option>
                       ))}
                     </select>
+                    <p className="text-text-tertiary text-[11px]">
+                      Automatisch schakelt vanzelf over zodra Anthropic een nieuwere Opus uitbrengt. Kies een specifiek model om het vast te zetten.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-text-tertiary text-xs font-medium">Website voor live opzoeken</label>
+                    <input
+                      value={settings.website_domain}
+                      onChange={e => setSettings(p => ({ ...p, website_domain: e.target.value.trim() }))}
+                      placeholder="speedropeshop.com"
+                      className="w-full bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
+                    />
+                    <p className="text-text-tertiary text-[11px]">
+                      Claude zoekt bij het opstellen van een antwoord alleen op dit domein naar product-info, FAQ en hulpartikelen.
+                    </p>
                   </div>
 
                   <hr className="border-border" />

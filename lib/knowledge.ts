@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { getDb } from './db'
 
 const KNOWLEDGE_DIR = path.join(process.cwd(), 'knowledge')
 
@@ -33,6 +34,7 @@ export const KNOWLEDGE_TOPICS: { slug: string; title: string; description: strin
   { slug: 'spare-parts', title: 'Reserveonderdelen', description: 'Reserveonderdelen bestellen' },
   { slug: 'installation-support', title: 'Installatieondersteuning', description: 'Hulp bij installatie' },
   { slug: 'recycling-disposal', title: 'Recycling & Afvoer', description: 'Milieuvriendelijke afvoeringsmogelijkheden' },
+  { slug: 'writing-style', title: 'Schrijfstijl & Werkwijze', description: 'Hoe wij klanten te woord staan' },
 ]
 
 function ensureDir() {
@@ -69,10 +71,68 @@ export function saveKnowledgeFile(slug: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf-8')
 }
 
-export async function getKnowledgeContext(): Promise<string> {
-  const files = getAllKnowledgeFiles().filter(f => f.content.trim().length > 0)
-  if (!files.length) return ''
-  return files
-    .map(f => `### ${f.title}\n${f.content}`)
-    .join('\n\n---\n\n')
+export type FactSource = 'ai' | 'manual' | 'website' | 'team'
+
+export interface KnowledgeFact {
+  id: number
+  topic: string
+  fact: string
+  source: FactSource
+  conversation_id: number | null
+  created_at: string
+  updated_at: string
+}
+
+export function getFacts(topic?: string): KnowledgeFact[] {
+  const db = getDb()
+  return (topic
+    ? db.prepare('SELECT * FROM knowledge_facts WHERE topic = ? ORDER BY created_at ASC, id ASC').all(topic)
+    : db.prepare('SELECT * FROM knowledge_facts ORDER BY topic, created_at ASC, id ASC').all()) as KnowledgeFact[]
+}
+
+export function factCounts(): Record<string, number> {
+  const rows = getDb().prepare('SELECT topic, COUNT(*) AS n FROM knowledge_facts GROUP BY topic').all() as { topic: string; n: number }[]
+  return Object.fromEntries(rows.map(r => [r.topic, r.n]))
+}
+
+export function addFact(topic: string, fact: string, source: FactSource, conversationId: number | null): number {
+  if (!KNOWLEDGE_TOPICS.some(t => t.slug === topic)) throw new Error('Invalid topic')
+  const result = getDb().prepare(
+    'INSERT INTO knowledge_facts (topic, fact, source, conversation_id) VALUES (?, ?, ?, ?)'
+  ).run(topic, fact.trim(), source, conversationId)
+  return Number(result.lastInsertRowid)
+}
+
+// Vervangt de tekst (en eventueel het onderwerp) van een bestaand feit. Geeft false als
+// het feit niet (meer) bestaat, bijvoorbeeld omdat iemand het intussen verwijderde.
+export function updateFact(id: number, fact: string, topic?: string): boolean {
+  if (topic && !KNOWLEDGE_TOPICS.some(t => t.slug === topic)) throw new Error('Invalid topic')
+  const result = getDb().prepare(
+    'UPDATE knowledge_facts SET fact = ?, topic = COALESCE(?, topic), updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  ).run(fact.trim(), topic ?? null, id)
+  return result.changes > 0
+}
+
+export function deleteFact(id: number): void {
+  getDb().prepare('DELETE FROM knowledge_facts WHERE id = ?').run(id)
+}
+
+// Onderwerpbestanden plus geleerde feiten per onderwerp, voor in de prompt.
+export function getKnowledgeContext(): string {
+  const facts = getFacts()
+  const sections = KNOWLEDGE_TOPICS.map(t => {
+    const file = getKnowledgeFile(t.slug).content.trim()
+    const teamFacts = facts.filter(f => f.topic === t.slug && f.source !== 'website')
+    const siteFacts = facts.filter(f => f.topic === t.slug && f.source === 'website')
+    if (!file && !teamFacts.length && !siteFacts.length) return ''
+    const parts = [file]
+    if (teamFacts.length) {
+      parts.push(`Geleerd van het team (gaat voor bij tegenstrijdigheid):\n${teamFacts.map(f => `- ${f.fact}`).join('\n')}`)
+    }
+    if (siteFacts.length) {
+      parts.push(`Eerder van de website overgenomen (kan verouderd zijn, controleer bij twijfel live):\n${siteFacts.map(f => `- ${f.fact}`).join('\n')}`)
+    }
+    return `### ${t.title}\n${parts.filter(Boolean).join('\n\n')}`
+  }).filter(Boolean)
+  return sections.join('\n\n---\n\n')
 }

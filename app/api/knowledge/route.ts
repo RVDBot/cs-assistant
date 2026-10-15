@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAllKnowledgeFiles, getKnowledgeFile, saveKnowledgeFile, KNOWLEDGE_TOPICS } from '@/lib/knowledge'
+import { getAllKnowledgeFiles, getKnowledgeFile, saveKnowledgeFile, KNOWLEDGE_TOPICS, getFacts, factCounts } from '@/lib/knowledge'
 
 export async function GET() {
   const files = getAllKnowledgeFiles()
-  return NextResponse.json({ files, topics: KNOWLEDGE_TOPICS })
+  return NextResponse.json({ files, topics: KNOWLEDGE_TOPICS, factCounts: factCounts() })
 }
 
 export async function PUT(req: NextRequest) {
@@ -29,5 +29,5 @@ export async function POST(req: NextRequest) {
   }
 
   const file = getKnowledgeFile(slug)
-  return NextResponse.json(file)
+  return NextResponse.json({ ...file, facts: getFacts(slug) })
 }

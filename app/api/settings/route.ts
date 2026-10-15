@@ -9,6 +9,7 @@ const SETTING_KEYS = [
   'base_url',
   'anthropic_api_key',
   'claude_model',
+  'website_domain',
   'app_password',
   'wc_store_url',
   'wc_consumer_key',

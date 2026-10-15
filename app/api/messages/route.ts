@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db'
 import { sendWhatsAppMessage } from '@/lib/twilio'
 import { sendEmail, getAccountForConversation } from '@/lib/email'
 import { log } from '@/lib/logger'
+import { takeDraft, learnFromInteraction, lastInboundDutch } from '@/lib/learning'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -81,6 +82,22 @@ export async function POST(req: NextRequest) {
   db.prepare(`
     UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, last_message = ? WHERE id = ?
   `).run(displayContent.slice(0, 100), conversation_id)
+
+  // Zelf getypte antwoorden zijn de belangrijkste bron voor de kennisbank, zeker als er
+  // een AI-concept klaarstond dat niet gebruikt werd. Korte berichten ("Top, fijne dag!")
+  // leren niets en kosten alleen een aanroep.
+  const draft = takeDraft(conversation_id)
+  const customerMessage = lastInboundDutch(conversation_id)
+  if (content && content.trim().length >= 20 && customerMessage) {
+    learnFromInteraction({
+      conversationId: conversation_id,
+      customerMessage,
+      finalAnswer: content,
+      aiDraft: draft?.draft ?? null,
+      instructions: draft?.instructions ?? [],
+      origin: 'manual',
+    })
+  }
 
   return NextResponse.json({ id: result.lastInsertRowid, twilio_sid: twilioSid })
 }

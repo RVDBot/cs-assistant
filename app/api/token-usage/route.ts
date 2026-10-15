@@ -8,6 +8,7 @@ const CALL_TYPE_LABELS: Record<string, string> = {
   translate_outbound: 'Uitgaand vertalen',
   detect_language: 'Taal detecteren',
   knowledge_update: 'Kennisbank bijwerken',
+  website_import: 'Website analyseren',
 }
 
 export async function GET(req: NextRequest) {

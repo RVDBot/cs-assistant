@@ -214,6 +214,29 @@ function initSchema(db: Database.Database) {
     `)
   } catch {}
 
+  // Gesprekken zonder naam die al bestellingen hebben: naam uit het factuuradres van
+  // de oudst gekoppelde bestelling. Idempotent, raakt alleen gesprekken zonder naam.
+  try {
+    db.exec(`
+      UPDATE conversations SET customer_name = (
+        SELECT TRIM(COALESCE(json_extract(o.order_data, '$.billing.first_name'), '') || ' ' ||
+                    COALESCE(json_extract(o.order_data, '$.billing.last_name'), ''))
+        FROM customer_orders o
+        WHERE o.conversation_id = conversations.id AND o.order_data IS NOT NULL
+          AND TRIM(COALESCE(json_extract(o.order_data, '$.billing.first_name'), '') ||
+                   COALESCE(json_extract(o.order_data, '$.billing.last_name'), '')) != ''
+        ORDER BY o.created_at ASC LIMIT 1
+      )
+      WHERE (customer_name IS NULL OR TRIM(customer_name) = '')
+        AND EXISTS (
+          SELECT 1 FROM customer_orders o
+          WHERE o.conversation_id = conversations.id AND o.order_data IS NOT NULL
+            AND TRIM(COALESCE(json_extract(o.order_data, '$.billing.first_name'), '') ||
+                     COALESCE(json_extract(o.order_data, '$.billing.last_name'), '')) != ''
+        )
+    `)
+  } catch {}
+
   // WhatsApp templates tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS wa_templates (

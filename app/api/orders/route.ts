@@ -69,6 +69,15 @@ function saveOrderData(
       }
     }
   }
+
+  // Gesprek zonder naam (toont nu het telefoonnummer) krijgt de naam uit het factuuradres.
+  // Een naam die al bestaat — handmatig of uit een e-mail — blijft staan.
+  const billingName = `${order.billing.first_name || ''} ${order.billing.last_name || ''}`.trim()
+  if (billingName) {
+    db.prepare(
+      `UPDATE conversations SET customer_name = ? WHERE id = ? AND (customer_name IS NULL OR TRIM(customer_name) = '')`
+    ).run(billingName, convId)
+  }
 }
 
 function markSynced(db: ReturnType<typeof getDb>, convId: number, watermark: string) {

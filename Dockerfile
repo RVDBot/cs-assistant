@@ -16,6 +16,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG GIT_SHA=dev
 ENV GIT_SHA=$GIT_SHA
+ARG BUILD_PATCH=
+ENV BUILD_PATCH=$BUILD_PATCH
 RUN npm run build
 
 # Production runner

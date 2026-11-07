@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next'
 import { readFileSync } from 'fs'
 
-const { version } = JSON.parse(readFileSync('./package.json', 'utf8')) as { version: string }
+const pkgVersion = (JSON.parse(readFileSync('./package.json', 'utf8')) as { version: string }).version
+// major.minor comes from package.json (bumped by hand); CI supplies the patch as BUILD_PATCH
+const [major, minor, patch] = pkgVersion.split('.')
+const version = `${major}.${minor}.${process.env.BUILD_PATCH || patch}`
 
 const nextConfig: NextConfig = {
   output: 'standalone',

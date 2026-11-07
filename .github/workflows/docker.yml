@@ -14,6 +14,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history, needed to count commits for the version
+
+      # Patch number = commits since package.json's version was last changed,
+      # so 0.7.0 becomes 0.7.1, 0.7.2, … without bumping it by hand
+      - name: Compute version patch
+        id: version
+        run: |
+          base=$(git log -1 --format=%H -G'"version":' -- package.json)
+          echo "patch=$(git rev-list --count "$base"..HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -31,3 +41,4 @@ jobs:
           build-args: |
             BUILDKIT_PROGRESS=plain
             GIT_SHA=${{ github.sha }}
+            BUILD_PATCH=${{ steps.version.outputs.patch }}

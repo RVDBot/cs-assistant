@@ -247,9 +247,9 @@ async function splitFormConversations() {
       }
       // Recompute list preview and ordering from the messages each conversation now holds
       for (const convId of touched) {
-        const last = db.prepare('SELECT content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT 1').get(convId) as { content: string; created_at: string } | undefined
+        const last = db.prepare('SELECT content, sent_at FROM messages WHERE conversation_id = ? ORDER BY sent_at DESC, id DESC LIMIT 1').get(convId) as { content: string; sent_at: string } | undefined
         if (last) {
-          db.prepare('UPDATE conversations SET last_message = ?, updated_at = ? WHERE id = ?').run(last.content.slice(0, 100), last.created_at, convId)
+          db.prepare('UPDATE conversations SET last_message = ?, updated_at = ? WHERE id = ?').run(last.content.slice(0, 100), last.sent_at, convId)
         } else {
           db.prepare('UPDATE conversations SET last_message = NULL, unread_count = 0, is_archived = 1 WHERE id = ?').run(convId)
         }

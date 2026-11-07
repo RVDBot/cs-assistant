@@ -104,6 +104,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     imap_port: number
     imap_user: string
     imap_password: string
+    imap_mailbox: string
     smtp_host: string
     smtp_port: number
     smtp_user: string
@@ -153,6 +154,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
     imap_port: 993,
     imap_user: '',
     imap_password: '',
+    imap_mailbox: 'INBOX',
     smtp_host: 'smtp.gmail.com',
     smtp_port: 587,
     smtp_user: '',
@@ -645,6 +647,8 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         </div>
                         <Field label="Gebruiker" id="acc_imap_user" value={editingAccount.imap_user} onChange={v => setEditingAccount(p => p && ({ ...p, imap_user: v }))} placeholder="help@speedropeshop.com" />
                         <Field label="Wachtwoord" id="acc_imap_password" value={editingAccount.imap_password} onChange={v => setEditingAccount(p => p && ({ ...p, imap_password: v }))} show={showImapPass} onToggle={() => setShowImapPass(!showImapPass)} />
+                        <Field label="Mailbox" id="acc_imap_mailbox" value={editingAccount.imap_mailbox ?? 'INBOX'} onChange={v => setEditingAccount(p => p && ({ ...p, imap_mailbox: v }))} placeholder="INBOX" />
+                        <p className="text-text-tertiary text-xs">Alleen ongelezen mail uit deze map wordt opgehaald. Proton Bridge: <code>Folders/Naam</code> of <code>Labels/Naam</code>. Gebruik &quot;Test&quot; om de beschikbare mappen te zien.</p>
                       </div>
 
                       <div className="space-y-3">
@@ -752,7 +756,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-text-tertiary text-xs">{acc.imap_user}</p>
+                              <p className="text-text-tertiary text-xs">{acc.imap_user}{acc.imap_mailbox && acc.imap_mailbox !== 'INBOX' ? ` · ${acc.imap_mailbox}` : ''}</p>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={async () => {

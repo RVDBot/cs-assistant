@@ -138,8 +138,18 @@ export async function testAccountConnection(accountId: number): Promise<{ imap: 
       tls: { rejectUnauthorized: false },
     })
     await client.connect()
-    await client.logout()
-    imapOk = true
+    try {
+      const mailbox = account.imap_mailbox || 'INBOX'
+      const boxes = await client.list()
+      if (boxes.some(b => b.path === mailbox)) {
+        imapOk = true
+      } else {
+        const available = boxes.map(b => b.path).filter(p => p !== '[Gmail]').join(', ')
+        errors.push(`IMAP: mailbox "${mailbox}" niet gevonden. Beschikbaar: ${available}`)
+      }
+    } finally {
+      await client.logout()
+    }
   } catch (e) {
     errors.push(`IMAP: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -226,8 +236,9 @@ async function fetchNewEmails(account: EmailAccount) {
   try {
     console.log(`[email-poll] ${account.name}: Verbinden met IMAP...`)
     await client.connect()
-    console.log(`[email-poll] ${account.name}: Verbonden, mailbox locken...`)
-    const lock = await client.getMailboxLock('INBOX')
+    console.log(`[email-poll] ${account.name}: Verbonden, mailbox "${account.imap_mailbox || 'INBOX'}" locken...`)
+    const mailbox = account.imap_mailbox || 'INBOX'
+    const lock = await client.getMailboxLock(mailbox)
     console.log(`[email-poll] ${account.name}: Lock verkregen, berichten ophalen...`)
 
     try {

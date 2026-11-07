@@ -314,6 +314,8 @@ function initSchema(db: Database.Database) {
       created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
+  // IMAP mailbox to poll (e.g. 'INBOX', or 'Labels/Klantenservice' via Proton Bridge)
+  try { db.exec(`ALTER TABLE email_accounts ADD COLUMN imap_mailbox TEXT NOT NULL DEFAULT 'INBOX'`) } catch {}
 
   // Migrate old single-account settings to email_accounts table
   try {
@@ -355,6 +357,7 @@ export interface EmailAccount {
   imap_port: number
   imap_user: string
   imap_password: string
+  imap_mailbox: string
   smtp_host: string
   smtp_port: number
   smtp_user: string

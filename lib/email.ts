@@ -3,7 +3,7 @@ import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
 import { sendPushToAllDevices } from './push'
 import { selectNewUids } from './email-cutoff'
-import { resolveCustomer } from './email-sender'
+import { resolveCustomer, planFormSplit } from './email-sender'
 import { stripQuotedHtml, stripQuotedText } from './email-quote'
 import path from 'path'
 import fs from 'fs'
@@ -177,6 +177,91 @@ export async function testAccountConnection(accountId: number): Promise<{ imap: 
 
 let pollingActive = false
 
+/**
+ * One-time repair: website-form mail stored before Reply-To was honoured all sits in
+ * one conversation under the site address. Look each message up in its mailbox, read
+ * Reply-To and move it to a conversation for that customer. Runs until it succeeds
+ * for every enabled account, then never again.
+ */
+async function splitFormConversations() {
+  const db = getDb()
+  const KEY = 'email_form_split_v1'
+  if (db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)) return
+
+  const { ImapFlow } = await import('imapflow')
+  const ourAddresses = new Set(getEmailAccounts().flatMap(a => [a.imap_user.toLowerCase(), a.smtp_user.toLowerCase()]))
+  let moved = 0
+
+  for (const account of getEnabledEmailAccounts()) {
+    const candidates = db.prepare(`
+      SELECT m.id, m.email_message_id AS messageId, c.customer_email AS conversationEmail
+      FROM messages m JOIN conversations c ON c.id = m.conversation_id
+      WHERE m.channel = 'email' AND m.direction = 'inbound' AND m.email_account_id = ? AND m.email_message_id IS NOT NULL AND m.email_message_id != ''
+    `).all(account.id) as Array<{ id: number; messageId: string; conversationEmail: string | null }>
+    if (candidates.length === 0) continue
+
+    const client = new ImapFlow({
+      host: account.imap_host,
+      port: account.imap_port,
+      secure: account.imap_port === 993,
+      ...(account.imap_port !== 993 ? { doSTARTTLS: true } : {}),
+      auth: { user: account.imap_user, pass: account.imap_password },
+      logger: false,
+      tls: { rejectUnauthorized: false },
+    })
+    const envelopes = new Map<string, { from?: Array<{ address?: string; name?: string }>; replyTo?: Array<{ address?: string; name?: string }> }>()
+    await client.connect()
+    try {
+      const lock = await client.getMailboxLock(account.imap_mailbox || 'INBOX')
+      try {
+        for (const c of candidates) {
+          const uids = await client.search({ header: { 'message-id': c.messageId } }, { uid: true })
+          if (!uids || uids.length === 0) continue
+          const msg = await client.fetchOne(String(uids[0]), { envelope: true }, { uid: true })
+          if (msg && msg.envelope) envelopes.set(c.messageId, msg.envelope as never)
+        }
+      } finally {
+        lock.release()
+      }
+    } finally {
+      await client.logout().catch(() => {})
+    }
+
+    const plan = planFormSplit(candidates, envelopes, ourAddresses)
+    console.log(`[email] ${account.name}: ${candidates.length} berichten bekeken, ${envelopes.size} gevonden in mailbox, ${plan.length} te verplaatsen`)
+    if (plan.length === 0) continue
+
+    const touched = new Set<number>()
+    db.transaction(() => {
+      for (const p of plan) {
+        const from = db.prepare('SELECT conversation_id FROM messages WHERE id = ?').get(p.messageRowId) as { conversation_id: number }
+        let target = db.prepare('SELECT id FROM conversations WHERE customer_email = ?').get(p.address) as { id: number } | undefined
+        if (!target) {
+          const r = db.prepare('INSERT INTO conversations (customer_email, customer_name, unread_count) VALUES (?, ?, 0)').run(p.address, p.name || null)
+          target = { id: Number(r.lastInsertRowid) }
+        }
+        db.prepare('UPDATE messages SET conversation_id = ? WHERE id = ?').run(target.id, p.messageRowId)
+        touched.add(from.conversation_id)
+        touched.add(target.id)
+        moved++
+      }
+      // Recompute list preview and ordering from the messages each conversation now holds
+      for (const convId of touched) {
+        const last = db.prepare('SELECT content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT 1').get(convId) as { content: string; created_at: string } | undefined
+        if (last) {
+          db.prepare('UPDATE conversations SET last_message = ?, updated_at = ? WHERE id = ?').run(last.content.slice(0, 100), last.created_at, convId)
+        } else {
+          db.prepare('UPDATE conversations SET last_message = NULL, unread_count = 0, is_archived = 1 WHERE id = ?').run(convId)
+        }
+      }
+    })()
+    log('info', 'systeem', `Formulier-mails gesplitst (${account.name})`, { moved: plan.length, conversations: touched.size })
+  }
+
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(KEY, new Date().toISOString())
+  console.log(`[email] Formulier-gesprekken gesplitst: ${moved} berichten verplaatst`)
+}
+
 // One-time cleanup: strip quoted history from email HTML stored before quotes were stripped on arrival
 function stripQuotesFromStoredEmails() {
   const db = getDb()
@@ -200,6 +285,7 @@ export function startEmailPolling() {
   if (pollingActive) return
   pollingActive = true
   try { stripQuotesFromStoredEmails() } catch (e) { console.error('[email] Citaten opschonen mislukt:', e) }
+  splitFormConversations().catch(e => console.error('[email] Formulier-gesprekken splitsen mislukt:', e))
   pollEmails().catch(e => console.error('[email-poll] Startup error:', e))
 }
 

@@ -22,3 +22,28 @@ export function resolveCustomer(
   }
   return { address: fromAddr, name: from?.name || '' }
 }
+
+/**
+ * For messages already stored under the wrong conversation (e.g. form mail grouped
+ * under the site address), work out which customer each one belongs to. Messages
+ * whose original mail can't be found, or that already sit with the right customer,
+ * are left out.
+ */
+export function planFormSplit(
+  messages: Array<{ id: number; conversationEmail: string | null; messageId: string }>,
+  envelopes: Map<string, { from?: Address[]; replyTo?: Address[] }>,
+  ourAddresses: Set<string>,
+): Array<{ messageRowId: number; address: string; name: string }> {
+  const plan: Array<{ messageRowId: number; address: string; name: string }> = []
+  for (const m of messages) {
+    const envelope = envelopes.get(m.messageId)
+    if (!envelope) continue
+    const customer = resolveCustomer(envelope, ourAddresses)
+    const fromAddr = envelope.from?.[0]?.address?.toLowerCase() || ''
+    // Only form-style mail (Reply-To names someone other than the sender); leave merged conversations alone
+    if (!customer.address || customer.address === fromAddr) continue
+    if (customer.address === (m.conversationEmail || '').toLowerCase()) continue
+    plan.push({ messageRowId: m.id, address: customer.address, name: customer.name })
+  }
+  return plan
+}

@@ -5,6 +5,7 @@ import { sendPushToAllDevices } from './push'
 import { selectNewUids, mailDateToDb } from './email-cutoff'
 import { resolveCustomer, planFormSplit } from './email-sender'
 import { stripQuotedHtml, stripQuotedText } from './email-quote'
+import { buildEmailBodies } from './email-signature'
 import path from 'path'
 import fs from 'fs'
 
@@ -108,7 +109,7 @@ export async function sendEmail(to: string, subject: string, body: string, inRep
     from: `"${account.from_name}" <${account.smtp_user}>`,
     to,
     subject,
-    text: body,
+    ...buildEmailBodies(body, account.signature_html),
     messageId,
   }
 

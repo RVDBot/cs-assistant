@@ -316,6 +316,7 @@ function initSchema(db: Database.Database) {
   `)
   // IMAP mailbox to poll (e.g. 'INBOX', or 'Labels/Klantenservice' via Proton Bridge)
   try { db.exec(`ALTER TABLE email_accounts ADD COLUMN imap_mailbox TEXT NOT NULL DEFAULT 'INBOX'`) } catch {}
+  try { db.exec(`ALTER TABLE email_accounts ADD COLUMN signature_html TEXT`) } catch {}
   // Only mail that arrived after this moment is imported, so an old unread backlog is ignored.
   // Existing accounts start an hour before this migration so nothing from the deploy gap is lost.
   try {
@@ -365,6 +366,7 @@ export interface EmailAccount {
   imap_password: string
   imap_mailbox: string
   poll_since: string | null
+  signature_html: string | null
   smtp_host: string
   smtp_port: number
   smtp_user: string

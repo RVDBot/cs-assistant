@@ -30,3 +30,4 @@ jobs:
           tags: ghcr.io/rvdbot/cs-assistant:latest
           build-args: |
             BUILDKIT_PROGRESS=plain
+            GIT_SHA=${{ github.sha }}

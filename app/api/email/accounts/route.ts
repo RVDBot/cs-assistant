@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name } = body
+  const { name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name, signature_html } = body
 
   if (!name || !imap_user || !imap_password || !smtp_user || !smtp_password) {
     return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 })
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
 
   const db = getDb()
   const result = db.prepare(`
-    INSERT INTO email_accounts (name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name, poll_since)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO email_accounts (name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name, signature_html, poll_since)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     name,
     imap_host || 'imap.gmail.com',
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     smtp_user,
     smtp_password,
     from_name || 'SpeedRope Shop',
+    signature_html?.trim() || null,
   )
 
   return NextResponse.json({ id: result.lastInsertRowid })
@@ -56,7 +57,7 @@ export async function PUT(req: NextRequest) {
 
   const db = getDb()
   const current = db.prepare('SELECT imap_mailbox FROM email_accounts WHERE id = ?').get(id) as { imap_mailbox: string } | undefined
-  const allowed = ['name', 'enabled', 'imap_host', 'imap_port', 'imap_user', 'imap_password', 'imap_mailbox', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'from_name']
+  const allowed = ['name', 'enabled', 'imap_host', 'imap_port', 'imap_user', 'imap_password', 'imap_mailbox', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'from_name', 'signature_html']
 
   for (const key of allowed) {
     if (fields[key] !== undefined) {

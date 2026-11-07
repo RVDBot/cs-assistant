@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
 
   const db = getDb()
   const result = db.prepare(`
-    INSERT INTO email_accounts (name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO email_accounts (name, imap_host, imap_port, imap_user, imap_password, imap_mailbox, smtp_host, smtp_port, smtp_user, smtp_password, from_name, poll_since)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     name,
     imap_host || 'imap.gmail.com',
@@ -55,6 +55,7 @@ export async function PUT(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'ID ontbreekt' }, { status: 400 })
 
   const db = getDb()
+  const current = db.prepare('SELECT imap_mailbox FROM email_accounts WHERE id = ?').get(id) as { imap_mailbox: string } | undefined
   const allowed = ['name', 'enabled', 'imap_host', 'imap_port', 'imap_user', 'imap_password', 'imap_mailbox', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'from_name']
 
   for (const key of allowed) {
@@ -64,6 +65,11 @@ export async function PUT(req: NextRequest) {
       if (key === 'imap_mailbox') fields[key] = String(fields[key]).trim() || 'INBOX'
       db.prepare(`UPDATE email_accounts SET ${key} = ? WHERE id = ?`).run(fields[key], id)
     }
+  }
+
+  // Pointing an account at another mailbox starts fresh: its existing unread mail is not imported.
+  if (current && fields.imap_mailbox !== undefined && (String(fields.imap_mailbox).trim() || 'INBOX') !== current.imap_mailbox) {
+    db.prepare('UPDATE email_accounts SET poll_since = CURRENT_TIMESTAMP WHERE id = ?').run(id)
   }
 
   return NextResponse.json({ ok: true })

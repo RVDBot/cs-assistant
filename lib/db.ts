@@ -316,6 +316,12 @@ function initSchema(db: Database.Database) {
   `)
   // IMAP mailbox to poll (e.g. 'INBOX', or 'Labels/Klantenservice' via Proton Bridge)
   try { db.exec(`ALTER TABLE email_accounts ADD COLUMN imap_mailbox TEXT NOT NULL DEFAULT 'INBOX'`) } catch {}
+  // Only mail that arrived after this moment is imported, so an old unread backlog is ignored.
+  // Existing accounts start an hour before this migration so nothing from the deploy gap is lost.
+  try {
+    db.exec(`ALTER TABLE email_accounts ADD COLUMN poll_since DATETIME`)
+    db.exec(`UPDATE email_accounts SET poll_since = datetime('now', '-1 hour') WHERE poll_since IS NULL`)
+  } catch {}
 
   // Migrate old single-account settings to email_accounts table
   try {
@@ -358,6 +364,7 @@ export interface EmailAccount {
   imap_user: string
   imap_password: string
   imap_mailbox: string
+  poll_since: string | null
   smtp_host: string
   smtp_port: number
   smtp_user: string

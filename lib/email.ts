@@ -2,6 +2,9 @@ import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
 import { sendPushToAllDevices } from './push'
+import { selectNewUids } from './email-cutoff'
+import { resolveCustomer } from './email-sender'
+import { stripQuotedHtml, stripQuotedText } from './email-quote'
 import path from 'path'
 import fs from 'fs'
 
@@ -173,11 +176,30 @@ export async function testAccountConnection(accountId: number): Promise<{ imap: 
 }
 
 let pollingActive = false
+
+// One-time cleanup: strip quoted history from email HTML stored before quotes were stripped on arrival
+function stripQuotesFromStoredEmails() {
+  const db = getDb()
+  const KEY = 'email_quotes_stripped_v1'
+  if (db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)) return
+  const rows = db.prepare(`SELECT id, email_html FROM messages WHERE channel = 'email' AND direction = 'inbound' AND email_html IS NOT NULL`).all() as Array<{ id: number; email_html: string }>
+  const update = db.prepare('UPDATE messages SET email_html = ? WHERE id = ?')
+  let changed = 0
+  db.transaction(() => {
+    for (const row of rows) {
+      const stripped = stripQuotedHtml(row.email_html)
+      if (stripped !== row.email_html) { update.run(stripped, row.id); changed++ }
+    }
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(KEY, new Date().toISOString())
+  })()
+  console.log(`[email] Citaten verwijderd uit ${changed} van ${rows.length} opgeslagen emails`)
+}
 let pollingTimer: ReturnType<typeof setTimeout> | null = null
 
 export function startEmailPolling() {
   if (pollingActive) return
   pollingActive = true
+  try { stripQuotesFromStoredEmails() } catch (e) { console.error('[email] Citaten opschonen mislukt:', e) }
   pollEmails().catch(e => console.error('[email-poll] Startup error:', e))
 }
 
@@ -242,12 +264,14 @@ async function fetchNewEmails(account: EmailAccount) {
     console.log(`[email-poll] ${account.name}: Lock verkregen, berichten ophalen...`)
 
     try {
-      // Step 1: Quick search for unseen UIDs only (no source download)
-      const unseenUids: number[] = []
-      for await (const msg of client.fetch({ seen: false }, { uid: true })) {
-        unseenUids.push(msg.uid)
+      // Step 1: Quick search for unseen UIDs only (no source download).
+      // Mail that arrived before poll_since is left untouched (stays unread in the mailbox).
+      const unseen: Array<{ uid: number; internalDate?: Date | string }> = []
+      for await (const msg of client.fetch({ seen: false }, { uid: true, internalDate: true })) {
+        unseen.push({ uid: msg.uid, internalDate: msg.internalDate })
       }
-      console.log(`[email-poll] ${account.name}: ${unseenUids.length} ongelezen berichten gevonden`)
+      const unseenUids = selectNewUids(unseen, account.poll_since)
+      console.log(`[email-poll] ${account.name}: ${unseen.length} ongelezen, ${unseenUids.length} nieuw sinds ${account.poll_since ?? 'begin'}`)
 
       if (unseenUids.length === 0) {
         lock.release()
@@ -315,7 +339,6 @@ async function processIncomingEmail(
   const envelope = msg.envelope || {} as Record<string, unknown>
   const fromList = (envelope.from || []) as Array<{ address?: string; name?: string }>
   const fromAddr = fromList[0]?.address?.toLowerCase() || ''
-  const fromName = fromList[0]?.name || ''
   const subject = (envelope.subject as string) || '(geen onderwerp)'
   const messageId = (envelope.messageId as string) || ''
   const inReplyTo = (envelope.inReplyTo as string) || ''
@@ -346,6 +369,12 @@ async function processIncomingEmail(
     return
   }
 
+  // Website-form mail comes from the site address with the customer in Reply-To
+  const customer = resolveCustomer(envelope as { from?: Array<{ address?: string; name?: string }>; replyTo?: Array<{ address?: string; name?: string }> }, ourAddresses)
+  const customerAddr = customer.address
+  const customerName = customer.name
+  if (customerAddr !== fromAddr) console.log(`[email-poll] Klant via Reply-To: ${customerAddr} (afzender ${fromAddr})`)
+
   // Parse body from raw source
   const { simpleParser } = await import('mailparser')
   const parsed = await simpleParser(msg.source)
@@ -353,7 +382,7 @@ async function processIncomingEmail(
   // Sanitize and store HTML (limit to 100KB to avoid huge newsletters)
   let emailHtml: string | null = null
   if (parsed.html && typeof parsed.html === 'string' && parsed.html.length < 100_000) {
-    emailHtml = await sanitizeEmailHtml(parsed.html)
+    emailHtml = await sanitizeEmailHtml(stripQuotedHtml(parsed.html))
   }
 
   // Extract plain text for storage and translation
@@ -367,7 +396,7 @@ async function processIncomingEmail(
   body = body.replace(/\[data:[^\]]{20,}\]/g, '[afbeelding]')
   body = body.replace(/data:[a-zA-Z/]+;base64,[A-Za-z0-9+/=]{20,}/g, '[afbeelding]')
 
-  body = stripQuotedReply(body)
+  body = stripQuotedText(body)
   // Limit body size for translation
   if (body.length > 5000) body = body.slice(0, 5000) + '\n...(ingekort)'
 
@@ -417,7 +446,7 @@ async function processIncomingEmail(
   if (!convId) {
     const existingConv = db.prepare(
       'SELECT id FROM conversations WHERE customer_email = ?'
-    ).get(fromAddr) as { id: number } | undefined
+    ).get(customerAddr) as { id: number } | undefined
     if (existingConv) convId = existingConv.id
   }
 
@@ -426,10 +455,10 @@ async function processIncomingEmail(
     const result = db.prepare(`
       INSERT INTO conversations (customer_email, customer_name, updated_at, last_message, unread_count)
       VALUES (?, ?, CURRENT_TIMESTAMP, ?, 1)
-    `).run(fromAddr, fromName || null, body.slice(0, 100))
+    `).run(customerAddr, customerName || null, body.slice(0, 100))
     convId = result.lastInsertRowid as number
 
-    log('info', 'bericht', `Nieuwe email-conversatie aangemaakt via ${account.name}`, { from: fromAddr, name: fromName }, convId)
+    log('info', 'bericht', `Nieuwe email-conversatie aangemaakt via ${account.name}`, { from: customerAddr, name: customerName }, convId)
   } else {
     db.prepare(`
       UPDATE conversations SET
@@ -440,10 +469,10 @@ async function processIncomingEmail(
       WHERE id = ?
     `).run(body.slice(0, 100), convId)
 
-    if (fromName) {
+    if (customerName) {
       db.prepare(`
         UPDATE conversations SET customer_name = ? WHERE id = ? AND customer_name IS NULL
-      `).run(fromName, convId)
+      `).run(customerName, convId)
     }
   }
 
@@ -455,7 +484,7 @@ async function processIncomingEmail(
     dutchContent = await translateToDutch(body, language, convId)
     db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, convId)
   } catch (e) {
-    log('error', 'ai', 'Vertaling email mislukt', { error: e instanceof Error ? e.message : String(e), from: fromAddr }, convId)
+    log('error', 'ai', 'Vertaling email mislukt', { error: e instanceof Error ? e.message : String(e), from: customerAddr }, convId)
   }
 
   // Save message with account reference
@@ -466,7 +495,7 @@ async function processIncomingEmail(
 
   try {
     const convRow = db.prepare('SELECT customer_name FROM conversations WHERE id = ?').get(convId) as { customer_name: string | null } | undefined
-    const title = convRow?.customer_name || fromAddr
+    const title = convRow?.customer_name || customerAddr
     await sendPushToAllDevices({
       title,
       body: dutchContent.slice(0, 140),
@@ -477,34 +506,9 @@ async function processIncomingEmail(
     log('error', 'push', 'Push verzenden na inbound email mislukt', { error: e instanceof Error ? e.message : String(e) }, convId ?? undefined)
   }
 
-  log('info', 'bericht', `Email ontvangen via ${account.name} van ${fromAddr} (${language.toUpperCase()})`, { from: fromAddr, subject, account: account.name }, convId)
+  log('info', 'bericht', `Email ontvangen via ${account.name} van ${customerAddr} (${language.toUpperCase()})`, { from: customerAddr, subject, account: account.name }, convId)
 
-  tryAutoMerge(fromAddr, convId)
-}
-
-function stripQuotedReply(text: string): string {
-  const lines = text.split('\n')
-  const cutPatterns = [
-    /^On .+ wrote:$/,
-    /^Op .+ schreef .+:$/,
-    /^Am .+ schrieb .+:$/,
-    /^Le .+ a écrit :$/,
-    /^-{3,}\s*Original Message\s*-{3,}/i,
-    /^-{3,}\s*Oorspronkelijk bericht\s*-{3,}/i,
-    /^From:/,
-    /^Van:/,
-    /^>+\s/,
-  ]
-
-  let cutIndex = lines.length
-  for (let i = 0; i < lines.length; i++) {
-    if (cutPatterns.some(p => p.test(lines[i].trim()))) {
-      cutIndex = i
-      break
-    }
-  }
-
-  return lines.slice(0, cutIndex).join('\n').trim()
+  tryAutoMerge(customerAddr, convId)
 }
 
 async function tryAutoMerge(email: string, emailConvId: number) {

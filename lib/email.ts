@@ -2,7 +2,7 @@ import { getDb, type EmailAccount } from './db'
 import { detectLanguage, translateToDutch } from './claude'
 import { log } from './logger'
 import { sendPushToAllDevices } from './push'
-import { selectNewUids } from './email-cutoff'
+import { selectNewUids, mailDateToDb } from './email-cutoff'
 import { resolveCustomer, planFormSplit } from './email-sender'
 import { stripQuotedHtml, stripQuotedText } from './email-quote'
 import path from 'path'
@@ -177,6 +177,91 @@ export async function testAccountConnection(accountId: number): Promise<{ imap: 
 
 let pollingActive = false
 
+type Envelope = { date?: Date | string; from?: Array<{ address?: string; name?: string }>; replyTo?: Array<{ address?: string; name?: string }> }
+
+// Looks stored messages up in the account's mailbox by Message-ID and returns their envelopes
+async function lookupEnvelopes(account: EmailAccount, messageIds: string[]): Promise<Map<string, Envelope>> {
+  const { ImapFlow } = await import('imapflow')
+  const client = new ImapFlow({
+    host: account.imap_host,
+    port: account.imap_port,
+    secure: account.imap_port === 993,
+    ...(account.imap_port !== 993 ? { doSTARTTLS: true } : {}),
+    auth: { user: account.imap_user, pass: account.imap_password },
+    logger: false,
+    tls: { rejectUnauthorized: false },
+  })
+  const envelopes = new Map<string, Envelope>()
+  await client.connect()
+  try {
+    const lock = await client.getMailboxLock(account.imap_mailbox || 'INBOX')
+    try {
+      for (const id of messageIds) {
+        const uids = await client.search({ header: { 'message-id': id } }, { uid: true })
+        if (!uids || uids.length === 0) continue
+        const msg = await client.fetchOne(String(uids[0]), { envelope: true }, { uid: true })
+        if (msg && msg.envelope) envelopes.set(id, msg.envelope as Envelope)
+      }
+    } finally {
+      lock.release()
+    }
+  } finally {
+    await client.logout().catch(() => {})
+  }
+  return envelopes
+}
+
+// Sets a conversation's list preview and ordering from its newest message; false if it has none
+function refreshConversationPreview(convId: number): boolean {
+  const db = getDb()
+  const last = db.prepare('SELECT content, sent_at FROM messages WHERE conversation_id = ? ORDER BY sent_at DESC, id DESC LIMIT 1').get(convId) as { content: string; sent_at: string } | undefined
+  if (!last) return false
+  db.prepare('UPDATE conversations SET last_message = ?, updated_at = ? WHERE id = ?').run(last.content.slice(0, 100), last.sent_at, convId)
+  return true
+}
+
+function inboundEmailsOf(accountId: number) {
+  return getDb().prepare(`
+    SELECT m.id, m.email_message_id AS messageId, m.sent_at AS sentAt, m.conversation_id AS conversationId, c.customer_email AS conversationEmail
+    FROM messages m JOIN conversations c ON c.id = m.conversation_id
+    WHERE m.channel = 'email' AND m.direction = 'inbound' AND m.email_account_id = ? AND m.email_message_id IS NOT NULL AND m.email_message_id != ''
+  `).all(accountId) as Array<{ id: number; messageId: string; sentAt: string; conversationId: number; conversationEmail: string | null }>
+}
+
+/**
+ * One-time repair: messages stored before the mail's own Date was used carry the time
+ * they were fetched. Look up each mail's Date and correct sent_at and list ordering.
+ */
+async function fixStoredEmailDates() {
+  const db = getDb()
+  const KEY = 'email_dates_fixed_v1'
+  if (db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)) return
+  let fixed = 0
+
+  for (const account of getEnabledEmailAccounts()) {
+    const rows = inboundEmailsOf(account.id)
+    if (rows.length === 0) continue
+    const envelopes = await lookupEnvelopes(account, rows.map(r => r.messageId))
+    const touched = new Set<number>()
+    db.transaction(() => {
+      for (const r of rows) {
+        const env = envelopes.get(r.messageId)
+        if (!env?.date) continue
+        const sentAt = mailDateToDb(env.date)
+        if (sentAt === r.sentAt) continue
+        db.prepare('UPDATE messages SET sent_at = ? WHERE id = ?').run(sentAt, r.id)
+        touched.add(r.conversationId)
+        fixed++
+      }
+      for (const convId of touched) refreshConversationPreview(convId)
+    })()
+    console.log(`[email] ${account.name}: ${rows.length} berichten bekeken, ${envelopes.size} gevonden, ${touched.size} gesprekken bijgewerkt`)
+  }
+
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(KEY, new Date().toISOString())
+  console.log(`[email] Datums hersteld: ${fixed} berichten`)
+}
+
 /**
  * One-time repair: website-form mail stored before Reply-To was honoured all sits in
  * one conversation under the site address. Look each message up in its mailbox, read
@@ -188,44 +273,13 @@ async function splitFormConversations() {
   const KEY = 'email_form_split_v1'
   if (db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)) return
 
-  const { ImapFlow } = await import('imapflow')
   const ourAddresses = new Set(getEmailAccounts().flatMap(a => [a.imap_user.toLowerCase(), a.smtp_user.toLowerCase()]))
   let moved = 0
 
   for (const account of getEnabledEmailAccounts()) {
-    const candidates = db.prepare(`
-      SELECT m.id, m.email_message_id AS messageId, c.customer_email AS conversationEmail
-      FROM messages m JOIN conversations c ON c.id = m.conversation_id
-      WHERE m.channel = 'email' AND m.direction = 'inbound' AND m.email_account_id = ? AND m.email_message_id IS NOT NULL AND m.email_message_id != ''
-    `).all(account.id) as Array<{ id: number; messageId: string; conversationEmail: string | null }>
+    const candidates = inboundEmailsOf(account.id)
     if (candidates.length === 0) continue
-
-    const client = new ImapFlow({
-      host: account.imap_host,
-      port: account.imap_port,
-      secure: account.imap_port === 993,
-      ...(account.imap_port !== 993 ? { doSTARTTLS: true } : {}),
-      auth: { user: account.imap_user, pass: account.imap_password },
-      logger: false,
-      tls: { rejectUnauthorized: false },
-    })
-    const envelopes = new Map<string, { from?: Array<{ address?: string; name?: string }>; replyTo?: Array<{ address?: string; name?: string }> }>()
-    await client.connect()
-    try {
-      const lock = await client.getMailboxLock(account.imap_mailbox || 'INBOX')
-      try {
-        for (const c of candidates) {
-          const uids = await client.search({ header: { 'message-id': c.messageId } }, { uid: true })
-          if (!uids || uids.length === 0) continue
-          const msg = await client.fetchOne(String(uids[0]), { envelope: true }, { uid: true })
-          if (msg && msg.envelope) envelopes.set(c.messageId, msg.envelope as never)
-        }
-      } finally {
-        lock.release()
-      }
-    } finally {
-      await client.logout().catch(() => {})
-    }
+    const envelopes = await lookupEnvelopes(account, candidates.map(c => c.messageId))
 
     const plan = planFormSplit(candidates, envelopes, ourAddresses)
     console.log(`[email] ${account.name}: ${candidates.length} berichten bekeken, ${envelopes.size} gevonden in mailbox, ${plan.length} te verplaatsen`)
@@ -247,10 +301,7 @@ async function splitFormConversations() {
       }
       // Recompute list preview and ordering from the messages each conversation now holds
       for (const convId of touched) {
-        const last = db.prepare('SELECT content, sent_at FROM messages WHERE conversation_id = ? ORDER BY sent_at DESC, id DESC LIMIT 1').get(convId) as { content: string; sent_at: string } | undefined
-        if (last) {
-          db.prepare('UPDATE conversations SET last_message = ?, updated_at = ? WHERE id = ?').run(last.content.slice(0, 100), last.sent_at, convId)
-        } else {
+        if (!refreshConversationPreview(convId)) {
           db.prepare('UPDATE conversations SET last_message = NULL, unread_count = 0, is_archived = 1 WHERE id = ?').run(convId)
         }
       }
@@ -285,7 +336,10 @@ export function startEmailPolling() {
   if (pollingActive) return
   pollingActive = true
   try { stripQuotesFromStoredEmails() } catch (e) { console.error('[email] Citaten opschonen mislukt:', e) }
-  splitFormConversations().catch(e => console.error('[email] Formulier-gesprekken splitsen mislukt:', e))
+  splitFormConversations()
+    .catch(e => console.error('[email] Formulier-gesprekken splitsen mislukt:', e))
+    .then(() => fixStoredEmailDates())
+    .catch(e => console.error('[email] Datums herstellen mislukt:', e))
   pollEmails().catch(e => console.error('[email-poll] Startup error:', e))
 }
 
@@ -575,9 +629,9 @@ async function processIncomingEmail(
 
   // Save message with account reference
   db.prepare(`
-    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id, email_html, email_cc, email_attachments)
-    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?, ?, ?, ?)
-  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id, emailHtml, emailCc, emailAttachments)
+    INSERT INTO messages (conversation_id, direction, content, content_dutch, language, status, channel, email_subject, email_message_id, email_in_reply_to, email_account_id, email_html, email_cc, email_attachments, sent_at)
+    VALUES (?, 'inbound', ?, ?, ?, 'received', 'email', ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(convId, body, dutchContent, language, subject, messageId, inReplyTo || null, account.id, emailHtml, emailCc, emailAttachments, mailDateToDb(parsed.date || (envelope.date as Date | undefined)))
 
   try {
     const convRow = db.prepare('SELECT customer_name FROM conversations WHERE id = ?').get(convId) as { customer_name: string | null } | undefined

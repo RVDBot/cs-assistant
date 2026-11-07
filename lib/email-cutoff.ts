@@ -25,3 +25,14 @@ export function selectNewUids(
     })
     .map(m => m.uid)
 }
+
+/**
+ * Converts a mail's Date (header or arrival) to a SQLite UTC timestamp, so a message
+ * shows when it was sent rather than when it was fetched. Missing, invalid or
+ * future dates (wrong sender clock) fall back to `now`.
+ */
+export function mailDateToDb(date: Date | string | undefined, now: Date = new Date()): string {
+  const d = date ? new Date(date) : null
+  const t = d && !Number.isNaN(d.getTime()) && d.getTime() <= now.getTime() + 5 * 60_000 ? d : now
+  return t.toISOString().slice(0, 19).replace('T', ' ')
+}

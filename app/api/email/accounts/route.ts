@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { sanitizeSignature } from '@/lib/email-signature'
 
 const SENSITIVE_FIELDS = ['imap_password', 'smtp_password']
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     smtp_user,
     smtp_password,
     from_name || 'SpeedRope Shop',
-    signature_html?.trim() || null,
+    signature_html?.trim() ? sanitizeSignature(signature_html) || null : null,
   )
 
   return NextResponse.json({ id: result.lastInsertRowid })
@@ -64,6 +65,7 @@ export async function PUT(req: NextRequest) {
       // Don't overwrite password with masked placeholder
       if (fields[key] === '••••••••') continue
       if (key === 'imap_mailbox') fields[key] = String(fields[key]).trim() || 'INBOX'
+      if (key === 'signature_html') fields[key] = fields[key] ? sanitizeSignature(String(fields[key])) || null : null
       db.prepare(`UPDATE email_accounts SET ${key} = ? WHERE id = ?`).run(fields[key], id)
     }
   }

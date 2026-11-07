@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import SignatureEditor from './SignatureEditor'
 import { useRouter } from 'next/navigation'
 import { X, Save, Loader2, Eye, EyeOff, ExternalLink, LogOut, ScrollText, MessageSquare, Mail, Bot, ShoppingCart, BarChart3, Shield, ArrowLeft, ChevronRight, Plus, Pencil, Trash2, FileStack, Truck } from 'lucide-react'
 import { NotificationsSettings } from './NotificationsSettings'
@@ -662,31 +663,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         <Field label="Wachtwoord" id="acc_smtp_password" value={editingAccount.smtp_password} onChange={v => setEditingAccount(p => p && ({ ...p, smtp_password: v }))} show={showSmtpPass} onToggle={() => setShowSmtpPass(!showSmtpPass)} />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label htmlFor="acc_signature" className="text-text-tertiary text-xs font-medium">Handtekening (HTML)</label>
-                        <textarea
-                          id="acc_signature"
-                          value={editingAccount.signature_html ?? ''}
-                          onChange={e => setEditingAccount(p => p && ({ ...p, signature_html: e.target.value }))}
-                          placeholder={'<p>Met vriendelijke groet,<br><b>Ruben</b><br>Speed Rope Shop</p>'}
-                          rows={5}
-                          spellCheck={false}
-                          className="w-full bg-surface-2 text-text-primary text-xs font-mono px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary"
-                        />
-                        <p className="text-text-tertiary text-xs">Wordt onder elke mail vanaf dit account gezet. Afbeeldingen alleen via een https-link.</p>
-                        {editingAccount.signature_html?.trim() && (
-                          <div className="space-y-1">
-                            <p className="text-text-tertiary text-xs">Voorbeeld</p>
-                            {/* sandbox zonder rechten: scripts in de HTML draaien niet */}
-                            <iframe
-                              title="Voorbeeld handtekening"
-                              sandbox=""
-                              srcDoc={`<!doctype html><html><body style="margin:8px;font-family:sans-serif;font-size:14px;background:#fff;color:#111">${editingAccount.signature_html}</body></html>`}
-                              className="w-full h-32 rounded-lg border border-border bg-white"
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <SignatureEditor
+                        value={editingAccount.signature_html ?? ''}
+                        onChange={html => setEditingAccount(p => p && ({ ...p, signature_html: html }))}
+                      />
 
                       <div className="flex gap-2 pt-1">
                         <button

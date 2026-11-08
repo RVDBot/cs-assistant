@@ -249,7 +249,7 @@ export async function generateAnswer(params: {
   const firstName = params.customerName?.trim().split(/\s+/)[0]
 
   const greetingRule = params.channel === 'email'
-    ? `This is an email. Open with a short greeting${firstName ? ` using the name ${firstName}` : ''} and end with a brief, friendly closing, as is normal for email.`
+    ? `This is an email. Open with a short greeting${firstName ? ` using the name ${firstName}` : ''}. You may end with a friendly closing sentence, but do NOT add a sign-off formula or a name below it (no "Kind regards", "Met vriendelijke groet", "Sportieve groet", "Team …" or similar), even if earlier replies had one: the email signature is added automatically when the mail is sent.`
     : greet
       ? `Open with a short greeting that fits the time of day (in Dutch that would be "${GREETING_BY_DAYPART[part]}")${firstName ? `, you may use the name ${firstName}` : ''}. Do not thank them for their message.`
       : 'Do NOT open with a greeting, and do not thank them for their message or for waiting. The chat is ongoing: reply directly to what they said.'

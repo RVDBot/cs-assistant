@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    // Opaque status bar like in Safari: 'black-translucent' let the page run under it,
+    // where iOS blurred the top of the header
+    statusBarStyle: 'default',
     title: 'CS Assistant',
   },
   icons: {

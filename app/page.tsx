@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { useSwipeDismiss } from '@/components/useSwipeDismiss'
 import ConversationList from '@/components/ConversationList'
 import ChatWindow from '@/components/ChatWindow'
 import AIPanel from '@/components/AIPanel'
@@ -69,6 +70,8 @@ export default function Home() {
     handleMessageSent()
   }
 
+  const aiSheetRef = useSwipeDismiss(() => setShowMobileAI(false), showMobileAI)
+
   function handleBack() {
     setMobileView('list')
     setShowMobileAI(false)
@@ -113,7 +116,7 @@ export default function Home() {
           : 'hidden md:flex md:min-h-0 md:overflow-hidden'}
         onClick={e => { if (showMobileAI && e.target === e.currentTarget) setShowMobileAI(false) }}
       >
-        <div className={showMobileAI
+        <div ref={aiSheetRef} className={showMobileAI
           ? 'sheet-panel bg-surface-1 rounded-t-2xl max-h-[92dvh] flex flex-col overflow-hidden safe-bottom md:contents'
           : 'contents'}
         >

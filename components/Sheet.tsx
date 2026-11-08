@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useSwipeDismiss } from './useSwipeDismiss'
 
 // Venster dat op mobiel als bottom sheet van onderen opent en op desktop als
 // gecentreerd venster. Alle pop-ups gebruiken dit, zodat ze overal hetzelfde werken.
@@ -22,6 +23,9 @@ export default function Sheet({
   tall?: boolean
   zIndex?: string
 }) {
+  // Sheets that hold forms (no backdrop close) only swipe from the grip/header
+  const panelRef = useSwipeDismiss(onClose, true, !closeOnBackdrop)
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -34,10 +38,11 @@ export default function Sheet({
       onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
+        ref={panelRef}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        className={`sheet-panel w-full ${desktopWidth} bg-surface-1 shadow-lg flex flex-col overflow-hidden
+        className={`sheet-panel overscroll-contain w-full ${desktopWidth} bg-surface-1 shadow-lg flex flex-col overflow-hidden
           rounded-t-2xl md:rounded-xl md:border md:border-border
           max-h-[92dvh] md:max-h-[85vh] ${tall ? 'h-[92dvh] md:h-auto' : ''}
           pb-[env(safe-area-inset-bottom)] md:pb-0`}

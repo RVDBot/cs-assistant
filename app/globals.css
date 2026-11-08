@@ -8,9 +8,15 @@
   box-sizing: border-box;
 }
 
+/* White like the top bars: iOS colours the status-bar strip (and its blur) from the
+   page background, so a different colour shows as a grey haze over the header */
+html,
+body {
+  background: #ffffff;
+}
+
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f5f6f8;
   color: #1a1d21;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -112,11 +118,4 @@ body {
 /* Touch devices have no hover: controls that only appear on hover must always show there */
 @media (hover: none) {
   .touch-visible { opacity: 1 !important; }
-}
-
-/* Installed web app on a phone: the translucent status bar blurs what sits right below
-   it (iOS edge effect), so the top bars start 10px lower there. Not in the browser or on
-   desktop, where nothing sits under the status bar. */
-@media (display-mode: standalone) and (max-width: 767px) {
-  .safe-top { padding-top: calc(env(safe-area-inset-top) + 10px); }
 }

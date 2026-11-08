@@ -1,39 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSecret } from '@/lib/security'
+import { AUTH_COOKIE, readToken, needsRefresh, signToken, authCookieOptions } from '@/lib/auth-token'
 
 export const runtime = 'nodejs'
-
-async function verifyToken(token: string): Promise<boolean> {
-  try {
-    const dot = token.lastIndexOf('.')
-    if (dot === -1) return false
-    const payload = token.slice(0, dot)
-    const b64sig = token.slice(dot + 1)
-
-    // Verify expiry from payload
-    const parts = payload.split('|')
-    if (parts.length >= 2) {
-      const issuedAt = parseInt(parts[1], 10)
-      const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days
-      if (isNaN(issuedAt) || Date.now() - issuedAt > maxAge) {
-        return false
-      }
-    }
-
-    const secret = getSecret()
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    )
-    const signature = Uint8Array.from(atob(b64sig), c => c.charCodeAt(0))
-    return await crypto.subtle.verify('HMAC', key, signature, new TextEncoder().encode(payload))
-  } catch {
-    return false
-  }
-}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -48,9 +17,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const token = req.cookies.get('cs_auth')?.value
-  if (token && await verifyToken(token)) {
-    return NextResponse.next()
+  const token = req.cookies.get(AUTH_COOKIE)?.value
+  const issuedAt = token ? await readToken(token, getSecret()) : null
+  if (issuedAt !== null) {
+    const res = NextResponse.next()
+    // Sliding session: while the app is in use, re-issue the cookie (at most daily),
+    // so you are only logged out after 30 days without opening it
+    if (needsRefresh(issuedAt)) {
+      res.cookies.set(AUTH_COOKIE, await signToken(getSecret()), authCookieOptions())
+    }
+    return res
   }
 
   const url = req.nextUrl.clone()

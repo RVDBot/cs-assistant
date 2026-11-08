@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getSecret, hashPassword, verifyPassword, checkRateLimit } from '@/lib/security'
+import { AUTH_COOKIE, signToken, authCookieOptions } from '@/lib/auth-token'
 
 function getStoredPassword(): string {
   const db = getDb()
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('app_password') as { value: string } | undefined
   return row?.value || process.env.APP_PASSWORD || ''
-}
-
-async function signToken(payload: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(getSecret()),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload))
-  const b64sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
-  return `${payload}.${b64sig}`
 }
 
 // GET /api/auth — check if password is required
@@ -62,25 +50,16 @@ export async function POST(req: NextRequest) {
     db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(hashed, 'app_password')
   }
 
-  // H5 fix: include timestamp in token payload for server-side expiry
-  const payload = `authenticated|${Date.now()}`
-  const token = await signToken(payload)
-  const isProduction = process.env.NODE_ENV === 'production'
-
+  // Token carries its issue time; middleware keeps sliding it forward while the app is used
+  const token = await signToken(getSecret())
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('cs_auth', token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isProduction, // H2 fix
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
-  })
+  res.cookies.set(AUTH_COOKIE, token, authCookieOptions())
   return res
 }
 
 // DELETE /api/auth — logout
 export async function DELETE() {
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('cs_auth', '', { httpOnly: true, path: '/', maxAge: 0 })
+  res.cookies.set(AUTH_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
   return res
 }

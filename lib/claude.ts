@@ -80,7 +80,7 @@ export async function detectLanguage(text: string, conversationId?: number): Pro
 export async function translateToDutch(text: string, fromLang: string, conversationId?: number): Promise<string> {
   if (fromLang === 'nl') return text
   return simpleText(
-    `Translate the following text to Dutch. Return ONLY the translation, nothing else.\n\nText: ${text}`,
+    `Translate the following text to Dutch. Keep the layout exactly as it is: the same line breaks, blank lines between paragraphs, lists and greeting/signature lines. Return ONLY the translation, nothing else.\n\nText:\n${text}`,
     8000,
     'translate_inbound',
     conversationId,

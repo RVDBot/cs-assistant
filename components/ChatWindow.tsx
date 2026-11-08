@@ -626,7 +626,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   {/* Inbound: dutch translation always shown below message */}
                   {isInbound && msg.content_dutch && msg.content_dutch !== msg.content && (
                     <div className="mt-1.5">
-                      <div className="text-text-secondary text-xs bg-surface-2 rounded px-2 py-1 italic">
+                      <div className="text-text-secondary text-xs bg-surface-2 rounded px-2 py-1 italic whitespace-pre-wrap break-words">
                         🇳🇱 {msg.content_dutch}
                       </div>
                     </div>

@@ -2,6 +2,7 @@
 // in de chat alleen het nieuwe stuk toont. Zonder relatieve imports, zodat de
 // tests in tests/ dit bestand direct met `node --test` kunnen laden.
 import * as cheerio from 'cheerio'
+import { convert } from 'html-to-text'
 
 // "On … wrote:", "Op … schreef …:", "Op … heeft … (het volgende) geschreven:", etc.
 const ATTRIBUTION = [
@@ -73,4 +74,25 @@ export function stripQuotedHtml(html: string): string {
   const result = $.html().trim()
   const hasContent = $.root().text().trim().length > 0 || $('img').length > 0
   return hasContent ? result : html
+}
+
+/**
+ * Readable plain text from mail HTML: keeps paragraphs and line breaks, shows link
+ * text without the target (no "[mailto:…]" or tracking URLs) and skips images.
+ */
+export function htmlToPlainText(html: string): string {
+  return convert(html, {
+    wordwrap: false,
+    selectors: [
+      { selector: 'a', options: { ignoreHref: true } },
+      { selector: 'img', format: 'skip' },
+      { selector: 'h1', options: { uppercase: false } },
+      { selector: 'h2', options: { uppercase: false } },
+      { selector: 'h3', options: { uppercase: false } },
+      { selector: 'table', format: 'block' },
+      { selector: 'tr', format: 'block' },
+      { selector: 'td', format: 'inline' },
+      { selector: 'th', format: 'inline' },
+    ],
+  }).replace(/\n{3,}/g, '\n\n').trim()
 }

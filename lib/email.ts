@@ -4,7 +4,7 @@ import { log } from './logger'
 import { sendPushToAllDevices } from './push'
 import { selectNewUids, mailDateToDb } from './email-cutoff'
 import { resolveCustomer, planFormSplit } from './email-sender'
-import { stripQuotedHtml, stripQuotedText } from './email-quote'
+import { stripQuotedHtml, stripQuotedText, htmlToPlainText } from './email-quote'
 import { buildEmailBodies } from './email-signature'
 import path from 'path'
 import fs from 'fs'
@@ -314,6 +314,40 @@ async function splitFormConversations() {
   console.log(`[email] Formulier-gesprekken gesplitst: ${moved} berichten verplaatst`)
 }
 
+/**
+ * One-time repair: recent inbound mail whose text was made with link targets in it
+ * ("x [mailto:x]", tracking URLs). Rebuild the text from the stored HTML and
+ * translate again, so the Dutch translation is clean and keeps its line breaks.
+ */
+async function rebuildRecentEmailText() {
+  const db = getDb()
+  const KEY = 'email_text_rebuilt_v1'
+  if (db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)) return
+  const rows = db.prepare(`
+    SELECT id, conversation_id, content, language, email_html FROM messages
+    WHERE channel = 'email' AND direction = 'inbound' AND email_html IS NOT NULL AND sent_at >= datetime('now', '-30 days')
+    ORDER BY id DESC LIMIT 200
+  `).all() as Array<{ id: number; conversation_id: number; content: string; language: string | null; email_html: string }>
+  let rebuilt = 0
+  for (const r of rows) {
+    let text = stripQuotedText(htmlToPlainText(r.email_html))
+    if (!text) continue
+    if (text.length > 5000) text = text.slice(0, 5000) + '\n...(ingekort)'
+    if (text === r.content) continue
+    let dutch = text
+    try {
+      dutch = await translateToDutch(text, r.language || 'en', r.conversation_id)
+    } catch (e) {
+      console.error(`[email] Hervertalen mislukt voor bericht ${r.id}:`, e instanceof Error ? e.message : String(e))
+      continue
+    }
+    db.prepare('UPDATE messages SET content = ?, content_dutch = ? WHERE id = ?').run(text, dutch, r.id)
+    rebuilt++
+  }
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(KEY, new Date().toISOString())
+  console.log(`[email] Tekst opnieuw opgebouwd en vertaald: ${rebuilt} van ${rows.length} recente emails`)
+}
+
 // One-time cleanup: strip quoted history from email HTML stored before quotes were stripped on arrival
 function stripQuotesFromStoredEmails() {
   const db = getDb()
@@ -341,6 +375,8 @@ export function startEmailPolling() {
     .catch(e => console.error('[email] Formulier-gesprekken splitsen mislukt:', e))
     .then(() => fixStoredEmailDates())
     .catch(e => console.error('[email] Datums herstellen mislukt:', e))
+    .then(() => rebuildRecentEmailText())
+    .catch(e => console.error('[email] Tekst opnieuw opbouwen mislukt:', e))
   pollEmails().catch(e => console.error('[email-poll] Startup error:', e))
 }
 
@@ -527,10 +563,10 @@ async function processIncomingEmail(
   }
 
   // Extract plain text for storage and translation
-  let body = parsed.text || ''
-  if (!body && parsed.html) {
-    body = htmlToText(parsed.html, { wordwrap: false })
-  }
+  // Prefer the HTML (quotes stripped, link targets and tracking images dropped): a
+  // sender's own text part often lists every link as "text [url]"
+  let body = typeof parsed.html === 'string' && parsed.html ? htmlToPlainText(stripQuotedHtml(parsed.html)) : ''
+  if (!body) body = parsed.text || ''
   if (!body) body = '(leeg bericht)'
 
   // Strip inline base64 data from plain text

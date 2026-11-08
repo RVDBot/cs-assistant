@@ -52,3 +52,16 @@ test('plain text: English attribution and > quotes', () => {
 test('plain text without quotes is unchanged', () => {
   assert.equal(stripQuotedText('Hello,\nI lost the screw.'), 'Hello,\nI lost the screw.')
 })
+
+import { htmlToPlainText } from '../lib/email-quote.ts'
+
+test('plain text from HTML keeps line breaks but drops link targets and tracking images', () => {
+  const html = `<p>Help request received from Elaine Asker</p><p>Hi,<br>I lost the screw.<br>Thankyou</p>
+    <p><b>Elaine Asker</b><br><a href="mailto:elaineasker@yahoo.co.uk">elaineasker@yahoo.co.uk</a></p>
+    <img src="https://speedropeshop.com/wp-json/wp-mail-smtp/v1/e/ZGF0YSU1QmVtYWlsX2xvZ19pZCU1RD02" width="1" height="1">
+    <p><a href="https://speedropeshop.com/wp-json/wp-mail-smtp/v1/c/abc">Bekijk bestelling</a></p>`
+  assert.equal(
+    htmlToPlainText(html),
+    'Help request received from Elaine Asker\n\nHi,\nI lost the screw.\nThankyou\n\nElaine Asker\nelaineasker@yahoo.co.uk\n\nBekijk bestelling',
+  )
+})

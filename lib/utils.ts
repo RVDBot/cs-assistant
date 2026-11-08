@@ -52,7 +52,10 @@ export function formatPhone(phone: string): string {
 
 export function formatContactName(name: string | null, phone: string, email?: string | null): string {
   const clean = phone ? formatPhone(phone) : (email || '')
-  return name ? `${name} (${clean})` : clean
+  const n = name?.trim()
+  // A "name" that is only the email address (or phone) adds nothing: don't show it twice
+  if (!n || n.toLowerCase() === clean.toLowerCase() || n.toLowerCase() === (email || '').toLowerCase()) return clean
+  return `${n} (${clean})`
 }
 
 export function formatFileSize(bytes: number): string {

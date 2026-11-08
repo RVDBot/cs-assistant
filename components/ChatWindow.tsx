@@ -404,21 +404,39 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
           ) : (
             <button
               onClick={() => { setNameInput(conversation?.customer_name || ''); setEditingName(true) }}
-              className="text-left group"
+              className="text-left group block max-w-full min-w-0"
             >
-              <div className="text-text-primary font-medium text-sm flex items-center gap-1">
-                {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
-                <User className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+              <div className="text-text-primary font-medium text-sm flex items-center gap-1 min-w-0">
+                <span className="truncate">
+                  {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
+                </span>
+                <User className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
               </div>
             </button>
           )}
           <div className="text-text-tertiary text-xs flex items-center gap-1.5 whitespace-nowrap overflow-hidden md:flex-wrap md:whitespace-normal">
-            {/* On mobile the phone number is already in the name line, so leave room for the email */}
-            {conversation?.customer_phone && <span className={conversation?.customer_email ? 'hidden md:inline' : ''}>{formatPhone(conversation.customer_phone)}</span>}
-            {conversation?.customer_phone && conversation?.customer_email && <span className="hidden md:inline">&middot;</span>}
-            {conversation?.customer_email && <span className="truncate min-w-0">{conversation.customer_email}</span>}
-            <span className="shrink-0">&middot;</span>
-            <span className="shrink-0">{getLanguageName(conversation?.detected_language || 'en')}</span>
+            {(() => {
+              // Contact details, separated by dots. On mobile the phone is already in the
+              // name line; the email is skipped when the name line already is the email.
+              const name = formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)
+              const parts: { key: string; node: React.ReactNode; className: string }[] = []
+              if (conversation?.customer_phone) {
+                parts.push({ key: 'phone', node: formatPhone(conversation.customer_phone), className: conversation.customer_email ? 'hidden md:inline' : '' })
+              }
+              if (conversation?.customer_email && name !== conversation.customer_email) {
+                parts.push({ key: 'email', node: conversation.customer_email, className: 'truncate min-w-0' })
+              }
+              parts.push({ key: 'lang', node: getLanguageName(conversation?.detected_language || 'en'), className: 'shrink-0' })
+              const visible = (p: { className: string }) => !p.className.includes('hidden')
+              return parts.map((p, i) => {
+                // Dot before every part except the first one that is visible on mobile
+                const firstMobile = parts.findIndex(visible) === i
+                const dot = i === 0 ? null : (
+                  <span className={`shrink-0 ${firstMobile ? 'hidden md:inline' : ''}`}>&middot;</span>
+                )
+                return <span key={p.key} className={`contents`}>{dot}<span className={p.className}>{p.node}</span></span>
+              })
+            })()}
             {/* Desktop: inline actions, archive kept apart from the rest */}
             <button
               onClick={() => setShowOrders(true)}

@@ -73,6 +73,14 @@ export interface PushPayload {
   body: string
   url: string
   tag?: string
+  /** Unread total for the app-icon badge; filled in by sendPushToAllDevices when omitted */
+  badge?: number
+}
+
+/** Total unread messages across active (non-archived) conversations, for the app-icon badge. */
+export function totalUnread(): number {
+  const row = getDb().prepare('SELECT COALESCE(SUM(unread_count), 0) AS n FROM conversations WHERE is_archived = 0').get() as { n: number }
+  return row.n
 }
 
 /** Sends a push to a single subscription row. Returns true on success; deletes the row on 404/410. */
@@ -112,6 +120,7 @@ export interface SendResultSummary {
 export async function sendPushToAllDevices(payload: PushPayload): Promise<SendResultSummary> {
   const rows = listSubscriptions()
   if (rows.length === 0) return { total: 0, ok: 0, failed: 0 }
+  if (payload.badge === undefined) payload = { ...payload, badge: totalUnread() }
 
   const results = await Promise.all(rows.map(r => sendPushToOne(r, payload)))
   const ok = results.filter(Boolean).length

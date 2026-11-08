@@ -52,7 +52,13 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   useEffect(() => {
     const total = conversations.reduce((sum, c) => sum + c.unread_count, 0)
     document.title = total > 0 ? `(${total}) CS Assistant` : 'CS Assistant'
-  }, [conversations])
+    // Unread count on the app icon when installed as a web app (Dock / home screen).
+    // Only from the active list: the archive view would show the wrong total.
+    if (!showArchived && 'setAppBadge' in navigator) {
+      const p = total > 0 ? navigator.setAppBadge(total) : navigator.clearAppBadge()
+      p?.catch(() => {})
+    }
+  }, [conversations, showArchived])
 
   const load = useCallback(async () => {
     try {

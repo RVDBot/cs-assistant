@@ -31,6 +31,10 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'CS Assistant', body: event.data ? event.data.text() : '' }
   }
+  // Unread count on the app icon (Dock), also while the app is closed
+  if (typeof data.badge === 'number' && 'setAppBadge' in self.navigator) {
+    try { data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge() } catch {}
+  }
   event.waitUntil(
     self.registration.showNotification(data.title || 'CS Assistant', {
       body: data.body || '',

@@ -95,11 +95,11 @@ export default function Logs({ onClose }: Props) {
             <h2 className="text-text-primary font-semibold">Activiteitenlog</h2>
             <span className="text-text-tertiary text-xs">({logs.length})</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={load} className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors">
+          <div className="flex items-center gap-1">
+            <button onClick={load} aria-label="Vernieuwen" className="w-10 h-10 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button onClick={clearLogs} disabled={clearing} className="p-1.5 text-text-tertiary hover:text-danger transition-colors">
+            <button onClick={clearLogs} disabled={clearing} aria-label="Alle logs wissen" className="w-10 h-10 ml-3 flex items-center justify-center rounded-lg text-danger/70 hover:text-danger hover:bg-danger-subtle transition-colors">
               {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             </button>
             <button onClick={onClose} aria-label="Sluiten" className="w-11 h-11 -mr-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
@@ -109,21 +109,21 @@ export default function Logs({ onClose }: Props) {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-border">
-          <div className="relative flex-1 max-w-xs">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 px-5 py-3 border-b border-border">
+          <div className="relative w-full md:w-auto md:flex-1 md:max-w-xs">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Zoeken..."
-              className="w-full bg-surface-2 text-text-primary text-xs pl-7 pr-2 py-1.5 rounded-lg border border-border outline-none placeholder:text-text-tertiary"
+              className="w-full h-10 md:h-auto bg-surface-2 text-text-primary text-sm md:text-xs pl-7 pr-2 md:py-1.5 rounded-lg border border-border outline-none placeholder:text-text-tertiary"
             />
           </div>
           <select
             value={level}
             onChange={e => setLevel(e.target.value)}
-            className="bg-surface-2 text-text-primary text-xs px-2 py-1.5 rounded-lg border border-border outline-none"
+            className="flex-1 md:flex-none h-10 md:h-auto bg-surface-2 text-text-primary text-xs px-2 md:py-1.5 rounded-lg border border-border outline-none"
           >
             <option value="">Alle niveaus</option>
             <option value="info">Info</option>
@@ -133,7 +133,7 @@ export default function Logs({ onClose }: Props) {
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            className="bg-surface-2 text-text-primary text-xs px-2 py-1.5 rounded-lg border border-border outline-none"
+            className="flex-1 md:flex-none h-10 md:h-auto bg-surface-2 text-text-primary text-xs px-2 md:py-1.5 rounded-lg border border-border outline-none"
           >
             <option value="">Alle categorieën</option>
             <option value="bericht">Berichten</option>

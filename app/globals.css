@@ -113,3 +113,10 @@ body {
 @media (hover: none) {
   .touch-visible { opacity: 1 !important; }
 }
+
+/* Installed web app on a phone: the translucent status bar blurs what sits right below
+   it (iOS edge effect), so the top bars start 50px lower there. Not in the browser or on
+   desktop, where nothing sits under the status bar. */
+@media (display-mode: standalone) and (max-width: 767px) {
+  .safe-top { padding-top: calc(env(safe-area-inset-top) + 50px); }
+}

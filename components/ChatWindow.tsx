@@ -389,31 +389,18 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
         )}
         <MonsterAvatar identifier={conversation?.customer_phone || conversation?.customer_email || ''} size={40} className="shrink-0" />
         <div className="flex-1 min-w-0">
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={nameInput}
-                onChange={e => setNameInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false) }}
-                className="bg-surface-2 text-text-primary text-sm px-2 py-1 rounded outline-none border border-accent w-48"
-              />
-              <button onClick={saveName} className="text-accent text-xs hover:underline">Opslaan</button>
-              <button onClick={() => setEditingName(false)} className="text-text-tertiary text-xs hover:underline">Annuleer</button>
+          <button
+            onClick={() => { setNameInput(conversation?.customer_name || ''); setEditingName(true) }}
+            className="text-left group block max-w-full min-w-0"
+            title="Naam wijzigen"
+          >
+            <div className="text-text-primary font-medium text-sm flex items-center gap-1 min-w-0">
+              <span className="truncate">
+                {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
+              </span>
+              <User className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
             </div>
-          ) : (
-            <button
-              onClick={() => { setNameInput(conversation?.customer_name || ''); setEditingName(true) }}
-              className="text-left group block max-w-full min-w-0"
-            >
-              <div className="text-text-primary font-medium text-sm flex items-center gap-1 min-w-0">
-                <span className="truncate">
-                  {formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)}
-                </span>
-                <User className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
-              </div>
-            </button>
-          )}
+          </button>
           <div className="text-text-tertiary text-xs flex items-center gap-1.5 whitespace-nowrap overflow-hidden md:flex-wrap md:whitespace-normal">
             {(() => {
               // Contact details, separated by dots. On mobile the phone is already in the
@@ -421,7 +408,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               const name = formatContactName(conversation?.customer_name ?? null, conversation?.customer_phone ?? '', conversation?.customer_email)
               const parts: { key: string; node: React.ReactNode; className: string }[] = []
               if (conversation?.customer_phone) {
-                parts.push({ key: 'phone', node: formatPhone(conversation.customer_phone), className: conversation.customer_email ? 'hidden md:inline' : '' })
+                parts.push({ key: 'phone', node: formatPhone(conversation.customer_phone), className: conversation.customer_email ? 'hidden md:inline' : 'truncate min-w-0' })
               }
               if (conversation?.customer_email && name !== conversation.customer_email) {
                 parts.push({ key: 'email', node: conversation.customer_email, className: 'truncate min-w-0' })
@@ -485,6 +472,36 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
       </div>
       </div>
 
+      {editingName && (
+        <Sheet onClose={() => setEditingName(false)} desktopWidth="md:w-[400px]" closeOnBackdrop={false}>
+          <form
+            onSubmit={e => { e.preventDefault(); saveName() }}
+            className="px-5 pt-2 pb-5 space-y-4"
+          >
+            <h3 className="text-text-primary font-semibold">Naam wijzigen</h3>
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              placeholder="Naam van de klant"
+              autoCapitalize="words"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full h-12 bg-surface-2 text-text-primary text-base px-4 rounded-xl outline-none border border-border focus:border-accent"
+            />
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setEditingName(false)} className="flex-1 h-12 rounded-xl text-text-primary bg-surface-2 font-medium">
+                Annuleren
+              </button>
+              <button type="submit" disabled={!nameInput.trim()} className="flex-1 h-12 rounded-xl bg-accent text-white font-medium disabled:opacity-50">
+                Opslaan
+              </button>
+            </div>
+          </form>
+        </Sheet>
+      )}
+
       {showMenu && (
         <Sheet onClose={() => setShowMenu(false)}>
           <div className="py-1">
@@ -505,6 +522,9 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             )}
             {/* Conversation actions, set apart from navigation */}
             <div className="h-px bg-border my-1 mx-5" />
+            <button onClick={() => { setShowMenu(false); setNameInput(conversation?.customer_name || ''); setEditingName(true) }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <User className="w-5 h-5 text-text-tertiary" /> Naam wijzigen
+            </button>
             <button onClick={() => { setShowMenu(false); openMerge() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
               <Merge className="w-5 h-5 text-text-tertiary" /> Samenvoegen met…
             </button>
@@ -727,8 +747,8 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             <div className="px-4 py-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-text-primary text-sm font-medium">{selectedTemplate.name}</h4>
-                <button onClick={() => { setSelectedTemplate(null); setTemplateVars({}) }} className="text-text-tertiary hover:text-text-primary text-xs">
-                  Terug
+                <button onClick={() => { setSelectedTemplate(null); setTemplateVars({}) }} className="h-10 -my-2 -mr-2 px-3 rounded-lg text-text-tertiary hover:text-text-primary text-sm">
+                  Andere template
                 </button>
               </div>
               {/* Preview */}
@@ -974,14 +994,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                       <div className="flex gap-2">
                         <button
                           onClick={() => setMergeConfirmId(null)}
-                          className="text-sm text-text-tertiary hover:text-text-primary px-3 py-2"
+                          className="h-10 text-sm text-text-tertiary hover:text-text-primary px-3"
                         >
                           Annuleren
                         </button>
                         <button
                           onClick={() => doMerge(c.id)}
                           disabled={merging}
-                          className="text-sm bg-danger text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                          className="h-10 text-sm bg-danger text-white px-4 rounded-lg hover:opacity-90 disabled:opacity-50"
                         >
                           {merging ? 'Bezig...' : 'Bevestigen'}
                         </button>

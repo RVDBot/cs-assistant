@@ -160,14 +160,14 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
           <span className="text-text-primary text-xs flex-1">Meldingen voor nieuwe berichten?</span>
           <button
             onClick={requestPermission}
-            className="text-xs bg-accent text-white px-3 py-2 rounded-lg hover:bg-accent-hover transition-colors shrink-0"
+            className="h-10 text-xs bg-accent text-white px-3 rounded-lg hover:bg-accent-hover transition-colors shrink-0"
           >
             Inschakelen
           </button>
           <button
             onClick={() => { setBannerDismissed(true); localStorage.setItem('notif-dismissed', '1') }}
             aria-label="Sluiten"
-            className="w-9 h-9 -mr-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+            className="w-10 h-10 -mr-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -176,19 +176,21 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
 
       {/* Search + Archive toggle */}
       <div className="px-3 py-2 flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 py-2 flex-1">
+        {/* The whole grey pill focuses the field, not just the text line */}
+        <label className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 flex-1 h-10 cursor-text">
           <Search className="w-4 h-4 text-text-tertiary shrink-0" />
           <input
-            type="text"
+            type="search"
             placeholder="Zoeken of nieuw gesprek"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="bg-transparent text-text-primary text-sm w-full outline-none placeholder:text-text-tertiary"
+            className="bg-transparent text-text-primary text-sm w-full h-full outline-none placeholder:text-text-tertiary"
           />
-        </div>
+        </label>
         <button
           onClick={() => setShowArchived(v => !v)}
-          className={`p-2 rounded-lg transition-colors shrink-0 ${showArchived ? 'bg-accent-muted text-accent' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-2'}`}
+          aria-label={showArchived ? 'Toon actieve gesprekken' : 'Toon gearchiveerde gesprekken'}
+          className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors shrink-0 ${showArchived ? 'bg-accent-muted text-accent' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-2'}`}
           title={showArchived ? 'Toon actieve gesprekken' : 'Toon gearchiveerde gesprekken'}
         >
           <Archive className="w-4 h-4" />

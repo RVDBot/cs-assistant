@@ -261,7 +261,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1 text-text-tertiary text-xs mt-0.5">
+        <div className="flex items-center gap-1 text-text-tertiary text-xs -my-1.5 md:my-0 md:mt-0.5">
           <span>Klant schrijft in:</span>
           <select
             value={conversation.detected_language}
@@ -274,7 +274,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
               })
               onLanguageChange?.(lang)
             }}
-            className="bg-transparent text-accent text-xs font-medium cursor-pointer outline-none border-none appearance-none hover:text-accent-hover transition-colors pr-4 relative"
+            className="h-10 md:h-auto bg-transparent text-accent text-sm md:text-xs font-medium cursor-pointer outline-none border-none appearance-none hover:text-accent-hover transition-colors pr-5 relative"
             style={{ backgroundImage: 'none' }}
           >
             {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (

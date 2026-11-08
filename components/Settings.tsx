@@ -37,7 +37,8 @@ function Field({ label, id, value, onChange, show, onToggle, placeholder }: {
           <button
             type="button"
             onClick={onToggle}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+            aria-label={show ? 'Verberg' : 'Toon'}
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-text-tertiary hover:text-text-primary"
           >
             {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -223,7 +224,8 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
             {activeTab && (
               <button
                 onClick={() => setActiveTab(null)}
-                className="md:hidden p-1 -ml-1 text-text-tertiary hover:text-text-primary transition-colors"
+                aria-label="Terug"
+                className="md:hidden w-11 h-11 -ml-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -315,7 +317,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                       <code className="text-accent text-xs flex-1 truncate">{webhookUrl}</code>
                       <button
                         onClick={() => navigator.clipboard.writeText(webhookUrl)}
-                        className="text-text-tertiary hover:text-text-primary text-xs shrink-0"
+                        className="h-10 -my-2 -mr-2 px-3 text-text-tertiary hover:text-text-primary text-xs shrink-0"
                       >
                         Kopieer
                       </button>
@@ -331,7 +333,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         </code>
                         <button
                           onClick={() => navigator.clipboard.writeText(`${settings.base_url.replace(/\/$/, '')}/api/twilio/status`)}
-                          className="text-text-tertiary hover:text-text-primary text-xs shrink-0"
+                          className="h-10 -my-2 -mr-2 px-3 text-text-tertiary hover:text-text-primary text-xs shrink-0"
                         >
                           Kopieer
                         </button>
@@ -348,7 +350,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                   {editingTemplate ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setEditingTemplate(null)} className="text-text-tertiary hover:text-text-primary">
+                        <button onClick={() => setEditingTemplate(null)} aria-label="Terug" className="w-10 h-10 -ml-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary">
                           <ArrowLeft className="w-4 h-4" />
                         </button>
                         <h3 className="text-text-primary font-medium text-sm">
@@ -541,7 +543,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         <h3 className="text-text-primary font-medium text-sm">WhatsApp Templates</h3>
                         <button
                           onClick={() => setEditingTemplate({ ...emptyTemplate })}
-                          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
+                          className="h-10 -my-2 -mr-2 px-2 flex items-center gap-1.5 text-sm md:text-xs text-accent hover:underline"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Template toevoegen
@@ -581,10 +583,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                         preview: v.preview || '',
                                       })),
                                     })}
-                                    className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
+                                    className="w-10 h-10 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-1 transition-colors"
                                     title="Bewerken"
                                   >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={async () => {
@@ -592,10 +594,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       await fetch(`/api/templates/${tpl.id}`, { method: 'DELETE' })
                                       await fetchTemplates()
                                     }}
-                                    className="p-1.5 text-text-tertiary hover:text-danger transition-colors"
+                                    className="w-10 h-10 ml-3 flex items-center justify-center rounded-lg text-danger/70 hover:text-danger hover:bg-danger-subtle transition-colors"
                                     title="Verwijderen"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
@@ -620,7 +622,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                     /* Account edit/create form */
                     <>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }} className="text-text-tertiary hover:text-text-primary">
+                        <button onClick={() => { setEditingAccount(null); setShowImapPass(false); setShowSmtpPass(false) }} aria-label="Terug" className="w-10 h-10 -ml-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary">
                           <ArrowLeft className="w-4 h-4" />
                         </button>
                         <h3 className="text-text-primary font-medium text-sm">
@@ -635,7 +637,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         <span className="text-text-tertiary text-xs font-medium">Actief</span>
                         <button
                           onClick={() => setEditingAccount(p => p && ({ ...p, enabled: p.enabled ? 0 : 1 }))}
-                          className={`relative w-10 h-5 rounded-full transition-colors ${editingAccount.enabled ? 'bg-accent' : 'bg-border'}`}
+                          className={`relative w-10 h-5 rounded-full transition-colors after:absolute after:-inset-3 after:content-[''] ${editingAccount.enabled ? 'bg-accent' : 'bg-border'}`}
                         >
                           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${editingAccount.enabled ? 'left-5' : 'left-0.5'}`} />
                         </button>
@@ -703,7 +705,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                         <h3 className="text-text-primary font-medium text-sm">Email Accounts</h3>
                         <button
                           onClick={() => setEditingAccount({ ...emptyAccount })}
-                          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
+                          className="h-10 -my-2 -mr-2 px-2 flex items-center gap-1.5 text-sm md:text-xs text-accent hover:underline"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Account toevoegen
@@ -740,10 +742,10 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       setShowImapPass(false)
                                       setShowSmtpPass(false)
                                     }}
-                                    className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
+                                    className="w-10 h-10 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-1 transition-colors"
                                     title="Bewerken"
                                   >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={async () => {
@@ -756,15 +758,15 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                       await fetchEmailAccounts()
                                       setEmailTestResult(null)
                                     }}
-                                    className="p-1.5 text-text-tertiary hover:text-danger transition-colors"
+                                    className="w-10 h-10 ml-3 flex items-center justify-center rounded-lg text-danger/70 hover:text-danger hover:bg-danger-subtle transition-colors"
                                     title="Verwijderen"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
                               <p className="text-text-tertiary text-xs">{acc.imap_user}{acc.imap_mailbox && acc.imap_mailbox !== 'INBOX' ? ` · ${acc.imap_mailbox}` : ''}</p>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <button
                                   onClick={async () => {
                                     setEmailTesting(acc.id!)
@@ -783,7 +785,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     setEmailTesting(null)
                                   }}
                                   disabled={emailTesting === acc.id}
-                                  className="flex items-center gap-1.5 text-xs bg-surface-1 text-text-primary px-2.5 py-1 rounded hover:bg-border transition-colors disabled:opacity-50"
+                                  className="h-10 flex items-center gap-1.5 text-sm md:text-xs bg-surface-1 text-text-primary px-4 rounded-lg hover:bg-border transition-colors disabled:opacity-50"
                                 >
                                   {emailTesting === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                                   Test
@@ -797,7 +799,7 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
                                     })
                                     await fetchEmailAccounts()
                                   }}
-                                  className="text-xs text-text-tertiary hover:text-text-primary"
+                                  className="h-10 px-4 rounded-lg border border-border text-sm md:text-xs text-text-primary hover:bg-surface-1"
                                 >
                                   {acc.enabled ? 'Deactiveren' : 'Activeren'}
                                 </button>
@@ -1011,39 +1013,39 @@ export default function Settings({ onClose, onOpenLogs }: Props) {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-border flex justify-between">
-          <div className="flex items-center gap-3">
+        {/* Footer: on mobile Opslaan full width on top, the rest spread out below it */}
+        <div className="px-5 py-3 md:py-4 border-t border-border flex flex-col-reverse gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center justify-between md:justify-start md:gap-5">
             <button
               onClick={onOpenLogs}
-              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary text-sm transition-colors"
+              className="h-10 flex items-center gap-2 text-text-tertiary hover:text-text-primary text-sm transition-colors"
             >
               <ScrollText className="w-4 h-4" />
               Logs
             </button>
+            <span className="text-text-tertiary text-xs md:order-last" title="Versie en commit van deze build">
+              v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_SHA}
+            </span>
             <button
               onClick={logout}
-              className="flex items-center gap-2 text-text-tertiary hover:text-danger text-sm transition-colors"
+              className="h-10 flex items-center gap-2 text-text-tertiary hover:text-danger text-sm transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Uitloggen
             </button>
-            <span className="text-text-tertiary text-xs" title="Versie en commit van deze build">
-              v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_SHA}
-            </span>
           </div>
           {/* Deze knop slaat alleen de instellingen op, niet het open sub-formulier.
               Zichtbaar laten staan tijdens het bewerken van een template of account
               geeft een '✓ Opgeslagen' terwijl die wijzigingen juist verloren gaan. */}
           {editingTemplate || editingAccount ? (
-            <span className="text-text-tertiary text-xs">
+            <span className="hidden md:inline text-text-tertiary text-xs">
               Gebruik de knop onderaan het formulier om op te slaan
             </span>
           ) : (
             <button
               onClick={save}
               disabled={saving}
-              className="flex items-center gap-2 bg-accent disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors"
+              className="h-11 md:h-auto w-full md:w-auto flex items-center justify-center gap-2 bg-accent disabled:opacity-50 text-white text-sm font-medium px-5 md:py-2 rounded-lg hover:bg-accent-hover transition-colors"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -1,5 +1,6 @@
 'use client'
 
+import Sheet from './Sheet'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Search, MessageCircle, Settings, Menu, BookOpen, FileText, X, Bell, Mail, MessageSquare, Archive } from 'lucide-react'
 import { formatDate, getLanguageName, formatPhone, formatContactName } from '@/lib/utils'
@@ -33,7 +34,6 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
   const [menuOpen, setMenuOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
   const prevUnreads = useRef<Map<number, number>>(new Map())
   const initialLoadDone = useRef(false)
   const selectedIdRef = useRef(selectedId)
@@ -93,15 +93,6 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
     return () => clearInterval(interval)
   }, [load])
 
-  // Close menu on outside click
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
   const filtered = conversations.filter(c => {
     const q = search.toLowerCase()
     return (
@@ -113,8 +104,9 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
 
   return (
     <div className="flex flex-col h-full w-full md:w-[360px] md:min-w-[300px] border-r border-border bg-surface-1">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      {/* Header (padded below the status bar in the installed web app) */}
+      <div className="safe-top md:pt-0 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-2 md:py-3">
         <h1 className="text-text-primary font-semibold text-lg">CS Assistant</h1>
 
         {/* Desktop: individual icon buttons */}
@@ -134,41 +126,32 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
           </button>
         </div>
 
-        {/* Mobile: hamburger menu */}
-        <div className="relative md:hidden" ref={menuRef}>
-          <button
-            onClick={() => setMenuOpen(v => !v)}
-            className="p-2 rounded-full hover:bg-surface-2 text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-52 bg-surface-1 border border-border rounded-xl shadow-xl z-50 overflow-hidden">
-              <button
-                onClick={() => { setMenuOpen(false); onOpenKnowledge() }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-text-primary text-sm hover:bg-surface-2 transition-colors"
-              >
-                <BookOpen className="w-4 h-4 text-accent" />
-                Kennisbank
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onOpenContext() }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-text-primary text-sm hover:bg-surface-2 transition-colors"
-              >
-                <FileText className="w-4 h-4 text-accent" />
-                Context
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onOpenSettings() }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-text-primary text-sm hover:bg-surface-2 transition-colors"
-              >
-                <Settings className="w-4 h-4 text-accent" />
-                Instellingen
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Mobile: menu opens as a bottom sheet */}
+        <button
+          onClick={() => setMenuOpen(true)}
+          aria-label="Menu"
+          className="md:hidden w-11 h-11 -mr-3 flex items-center justify-center rounded-full text-text-tertiary hover:text-text-primary transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
       </div>
+      </div>
+
+      {menuOpen && (
+        <Sheet onClose={() => setMenuOpen(false)}>
+          <div className="py-1">
+            <button onClick={() => { setMenuOpen(false); onOpenKnowledge() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <BookOpen className="w-5 h-5 text-accent" /> Kennisbank
+            </button>
+            <button onClick={() => { setMenuOpen(false); onOpenContext() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <FileText className="w-5 h-5 text-accent" /> Context
+            </button>
+            <button onClick={() => { setMenuOpen(false); onOpenSettings() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <Settings className="w-5 h-5 text-accent" /> Instellingen
+            </button>
+          </div>
+        </Sheet>
+      )}
 
       {/* Notification permission banner */}
       {permission === 'default' && !bannerDismissed && (
@@ -177,13 +160,14 @@ export default function ConversationList({ selectedId, onSelect, onOpenSettings,
           <span className="text-text-primary text-xs flex-1">Meldingen voor nieuwe berichten?</span>
           <button
             onClick={requestPermission}
-            className="text-xs bg-accent text-white px-2.5 py-1 rounded-lg hover:bg-accent-hover transition-colors shrink-0"
+            className="text-xs bg-accent text-white px-3 py-2 rounded-lg hover:bg-accent-hover transition-colors shrink-0"
           >
             Inschakelen
           </button>
           <button
             onClick={() => { setBannerDismissed(true); localStorage.setItem('notif-dismissed', '1') }}
-            className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+            aria-label="Sluiten"
+            className="w-9 h-9 -mr-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

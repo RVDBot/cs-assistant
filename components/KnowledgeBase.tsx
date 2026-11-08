@@ -1,5 +1,6 @@
 'use client'
 
+import Sheet from './Sheet'
 import { useState, useEffect } from 'react'
 import { X, BookOpen, Save, Loader2, ChevronRight, ArrowLeft, Trash2, Pencil, Plus, Check } from 'lucide-react'
 
@@ -125,8 +126,7 @@ export default function KnowledgeBase({ onClose }: Props) {
   const mobileShowDetail = !!selectedSlug
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-surface-1 border border-border md:rounded-xl w-full md:w-[800px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-lg">
+    <Sheet onClose={onClose} desktopWidth="md:w-[800px]" closeOnBackdrop={false} tall>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function KnowledgeBase({ onClose }: Props) {
               <span className={mobileShowDetail ? 'hidden md:inline' : ''}>Kennisbank</span>
             </h2>
           </div>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary">
+          <button onClick={onClose} aria-label="Sluiten" className="w-11 h-11 -mr-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -295,7 +295,6 @@ export default function KnowledgeBase({ onClose }: Props) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

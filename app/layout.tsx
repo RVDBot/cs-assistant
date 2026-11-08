@@ -25,12 +25,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Let the web app use the full screen; components pad themselves with safe-area insets
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl">
-      <body className="h-screen overflow-hidden">{children}</body>
+      <body className="h-dvh overflow-hidden">{children}</body>
     </html>
   )
 }

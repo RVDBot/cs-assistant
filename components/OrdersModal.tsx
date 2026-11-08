@@ -1,5 +1,6 @@
 'use client'
 
+import Sheet from './Sheet'
 import { useState, useEffect } from 'react'
 import { X, Loader2, ChevronDown, ExternalLink, Trash2, Search, Package, MapPin, Truck, AlertCircle, RefreshCw, Phone, Mail, Hash, SearchIcon, Printer } from 'lucide-react'
 
@@ -299,11 +300,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
   const hasSuggestions = unlinkedOrderNumbers.length > 0 || unlinkedEmails.length > 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="bg-surface-1 border border-border rounded-xl w-full max-w-[560px] max-h-[85vh] flex flex-col shadow-lg"
-        onClick={e => e.stopPropagation()}
-      >
+    <Sheet onClose={onClose} desktopWidth="md:w-[560px]" tall>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="text-text-primary font-semibold flex items-center gap-2">
@@ -318,7 +315,7 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
                 <RefreshCw className="w-4 h-4" />
               </button>
             )}
-            <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
+            <button onClick={onClose} aria-label="Sluiten" className="w-11 h-11 -mr-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -639,7 +636,6 @@ export default function OrdersModal({ conversationId, onClose, onOrderCountChang
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

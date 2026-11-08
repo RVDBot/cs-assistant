@@ -1,5 +1,6 @@
 'use client'
 
+import Sheet from './Sheet'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, ScrollText, RefreshCw, Trash2, Loader2, Search } from 'lucide-react'
 import { formatPhone } from '@/lib/utils'
@@ -86,8 +87,7 @@ export default function Logs({ onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-surface-1 border border-border md:rounded-xl w-full md:w-[820px] h-full md:h-auto md:max-h-[85vh] flex flex-col shadow-lg">
+    <Sheet onClose={onClose} desktopWidth="md:w-[820px]" tall>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default function Logs({ onClose }: Props) {
             <button onClick={clearLogs} disabled={clearing} className="p-1.5 text-text-tertiary hover:text-danger transition-colors">
               {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             </button>
-            <button onClick={onClose} className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors">
+            <button onClick={onClose} aria-label="Sluiten" className="w-11 h-11 -mr-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -199,7 +199,6 @@ export default function Logs({ onClose }: Props) {
             ))
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

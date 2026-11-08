@@ -94,3 +94,22 @@ body {
 .email-content h1, .email-content h2, .email-content h3 { font-size: 1em; font-weight: 600; margin: 0.5em 0 0.25em; }
 .email-content img { max-width: 100%; height: auto; }
 .email-content hr { border: none; border-top: 1px solid #eceef1; margin: 8px 0; }
+
+/* Bottom sheet: slide up on mobile, fade in on desktop */
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.sheet-panel { animation: sheetUp 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
+@media (min-width: 768px) {
+  .sheet-panel { animation: fadeIn 0.15s ease-out; }
+}
+
+/* Safe areas (notch, status bar, home indicator) for the installed web app */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Touch devices have no hover: controls that only appear on hover must always show there */
+@media (hover: none) {
+  .touch-visible { opacity: 1 !important; }
+}

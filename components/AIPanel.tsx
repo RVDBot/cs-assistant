@@ -226,7 +226,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
 
   if (!conversation) {
     return (
-      <div className="w-[380px] min-w-[320px] flex flex-col items-center justify-center bg-surface-1 border-l border-border">
+      <div className="w-full md:w-[380px] md:min-w-[320px] flex flex-col items-center justify-center bg-surface-1 md:border-l border-border">
         <div className="text-center text-text-tertiary px-6">
           <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Selecteer een gesprek voor AI-hulp</p>
@@ -239,7 +239,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
   const { answer, generating, improving, improveInput, preContext, showDutch, error, tokens } = state
 
   return (
-    <div className="w-[380px] min-w-[320px] flex flex-col min-h-0 bg-surface-1 border-l border-border">
+    <div className="w-full md:w-[380px] md:min-w-[320px] flex flex-col min-h-0 bg-surface-1 md:border-l border-border">
       {/* Token usage */}
       {tokens && (tokens.input > 0 || tokens.output > 0) && (
         <div className="flex items-center justify-between px-4 py-1.5 bg-surface-2 border-b border-border text-[11px] text-text-tertiary">
@@ -256,7 +256,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             <h2 className="text-text-primary font-semibold text-sm">AI Assistent</h2>
           </div>
           {onClose && (
-            <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
+            <button onClick={onClose} aria-label="Sluiten" className="md:hidden w-11 h-11 -mr-3 -my-2 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -338,13 +338,13 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             <div className="flex rounded-lg overflow-hidden border border-border text-xs">
               <button
                 onClick={() => patch({ showDutch: true })}
-                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
+                className={`flex-1 py-2.5 md:py-1.5 flex items-center justify-center gap-1 transition-colors ${showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
               >
                 🇳🇱 Nederlands (CS)
               </button>
               <button
                 onClick={() => patch({ showDutch: false })}
-                className={`flex-1 py-1.5 flex items-center justify-center gap-1 transition-colors ${!showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
+                className={`flex-1 py-2.5 md:py-1.5 flex items-center justify-center gap-1 transition-colors ${!showDutch ? 'bg-accent text-white' : 'text-text-tertiary hover:bg-surface-2'}`}
               >
                 <Languages className="w-3 h-3" />
                 {langName} (Klant)
@@ -352,13 +352,14 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
             </div>
 
             {/* Answer text */}
-            <div className="bg-surface-2 rounded-lg p-3 relative">
+            <div className="bg-surface-2 rounded-lg p-3 pr-11 md:pr-9 relative">
               <p className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
                 {showDutch ? answer.dutch : answer.customerLang}
               </p>
               <button
                 onClick={() => copyToClipboard(showDutch ? answer.dutch : answer.customerLang)}
-                className="absolute top-2 right-2 p-1 text-text-tertiary hover:text-text-primary transition-colors"
+                aria-label="Kopiëren"
+                className="absolute top-1 right-1 w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors"
                 title="Kopiëren"
               >
                 {copied ? <CheckIcon className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
@@ -392,7 +393,7 @@ export default function AIPanel({ conversation, onMessageSent, onClose, sendChan
                 <button
                   onClick={improve}
                   disabled={improving || !improveInput.trim()}
-                  className="p-2 bg-accent disabled:opacity-40 text-white rounded-lg hover:bg-accent-hover transition-colors shrink-0"
+                  className="w-10 h-10 md:w-auto md:h-auto md:p-2 flex items-center justify-center bg-accent disabled:opacity-40 text-white rounded-lg hover:bg-accent-hover transition-colors shrink-0"
                 >
                   {improving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 </button>

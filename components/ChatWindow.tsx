@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, Menu, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle, Download, X, Image as ImageIcon } from 'lucide-react'
+import { Send, Languages, ChevronDown, User, Check, CheckCheck, Loader2, ArrowLeft, BookOpen, FileText, Settings as SettingsIcon, Package, Mail, MessageSquare, Merge, Paperclip, Archive, FileStack, AlertTriangle, Download, X, Image as ImageIcon, Sparkles, MoreVertical } from 'lucide-react'
 import OrdersModal from '@/components/OrdersModal'
+import Sheet from '@/components/Sheet'
 import MonsterAvatar from '@/components/MonsterAvatar'
 import { formatTime, getLanguageName, formatPhone, formatContactName, formatFileSize } from '@/lib/utils'
 
@@ -73,9 +74,13 @@ interface Props {
   onOpenSettings?: () => void
   onOpenContext?: () => void
   onOpenKnowledge?: () => void
+  /** Called after archiving, so the page can offer an undo */
+  onArchived?: (conversationId: number) => void
+  /** Mobile: open the AI assistant sheet */
+  onOpenAI?: () => void
 }
 
-export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onChannelChange, onBack, onOpenSettings, onOpenContext, onOpenKnowledge }: Props) {
+export default function ChatWindow({ conversationId, onConversationLoad, onMessageSent, onChannelChange, onBack, onOpenSettings, onOpenContext, onOpenKnowledge, onArchived, onOpenAI }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -105,18 +110,22 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevMessagesLength = useRef(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false)
-      }
+  async function toggleArchive() {
+    if (!conversation) return
+    const archive = !conversation.is_archived
+    await fetch(`/api/conversations/${conversation.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_archived: archive }),
+    })
+    onMessageSent?.()
+    if (archive) {
+      onArchived?.(conversation.id)
+      onBack?.()
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Calculate WhatsApp 24h window remaining time
   useEffect(() => {
@@ -371,9 +380,10 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-surface-0">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-surface-1 border-b border-border shrink-0">
+      <div className="safe-top md:pt-0 bg-surface-1 border-b border-border shrink-0">
+      <div className="flex items-center gap-2 md:gap-3 px-4 py-2 md:py-3">
         {onBack && (
-          <button onClick={onBack} className="md:hidden p-1 -ml-1 text-text-tertiary hover:text-text-primary transition-colors">
+          <button onClick={onBack} aria-label="Terug" className="md:hidden w-11 h-11 -ml-3 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
@@ -402,78 +412,93 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               </div>
             </button>
           )}
-          <div className="text-text-tertiary text-xs flex items-center gap-1.5 flex-wrap">
-            {conversation?.customer_phone && <span>{formatPhone(conversation.customer_phone)}</span>}
-            {conversation?.customer_phone && conversation?.customer_email && <span>&middot;</span>}
-            {conversation?.customer_email && <span>{conversation.customer_email}</span>}
-            <span>&middot;</span>
-            <span>{getLanguageName(conversation?.detected_language || 'en')}</span>
+          <div className="text-text-tertiary text-xs flex items-center gap-1.5 whitespace-nowrap overflow-hidden md:flex-wrap md:whitespace-normal">
+            {/* On mobile the phone number is already in the name line, so leave room for the email */}
+            {conversation?.customer_phone && <span className={conversation?.customer_email ? 'hidden md:inline' : ''}>{formatPhone(conversation.customer_phone)}</span>}
+            {conversation?.customer_phone && conversation?.customer_email && <span className="hidden md:inline">&middot;</span>}
+            {conversation?.customer_email && <span className="truncate min-w-0">{conversation.customer_email}</span>}
+            <span className="shrink-0">&middot;</span>
+            <span className="shrink-0">{getLanguageName(conversation?.detected_language || 'en')}</span>
+            {/* Desktop: inline actions, archive kept apart from the rest */}
             <button
               onClick={() => setShowOrders(true)}
-              className="inline-flex items-center gap-1 text-accent hover:underline"
+              className="hidden md:inline-flex items-center gap-1 text-accent hover:underline"
             >
               <Package className="w-3 h-3" />
-              <span className="hidden sm:inline">Bestellingen{orderCount > 0 ? ` (${orderCount})` : ''}</span>
+              Bestellingen{orderCount > 0 ? ` (${orderCount})` : ''}
             </button>
             <button
               onClick={openMerge}
-              className="inline-flex items-center gap-1 text-accent hover:underline"
+              className="hidden md:inline-flex items-center gap-1 text-accent hover:underline"
             >
               <Merge className="w-3 h-3" />
-              <span className="hidden sm:inline">Samenvoegen</span>
+              Samenvoegen
             </button>
             <button
-              onClick={async () => {
-                if (!conversation) return
-                const archive = !conversation.is_archived
-                await fetch(`/api/conversations/${conversation.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ is_archived: archive }),
-                })
-                onMessageSent?.()
-                if (archive) onBack?.()
-              }}
-              className="inline-flex items-center gap-1 text-accent hover:underline"
+              onClick={toggleArchive}
+              className="hidden md:inline-flex items-center gap-1 text-text-tertiary hover:text-text-primary hover:underline ml-3"
             >
               <Archive className="w-3 h-3" />
-              <span className="hidden sm:inline">{conversation?.is_archived ? 'Terughalen' : 'Archiveren'}</span>
+              {conversation?.is_archived ? 'Terughalen' : 'Archiveren'}
             </button>
           </div>
         </div>
 
-        {/* Mobile hamburger menu */}
-        <div className="md:hidden relative" ref={menuRef}>
-          <button
-            onClick={() => setShowMenu(v => !v)}
-            className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-surface-1 border border-border rounded-lg shadow-xl z-50 overflow-hidden">
-              {onOpenKnowledge && (
-                <button onClick={() => { setShowMenu(false); onOpenKnowledge() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
-                  <BookOpen className="w-4 h-4 text-text-tertiary" /> Kennisbank
-                </button>
-              )}
-              {onOpenContext && (
-                <button onClick={() => { setShowMenu(false); onOpenContext() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
-                  <FileText className="w-4 h-4 text-text-tertiary" /> Context
-                </button>
-              )}
-              {onOpenSettings && (
-                <button onClick={() => { setShowMenu(false); onOpenSettings() }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-2 transition-colors">
-                  <SettingsIcon className="w-4 h-4 text-text-tertiary" /> Instellingen
-                </button>
-              )}
-            </div>
+        {/* Mobile: orders as a real button, everything else in the menu sheet */}
+        <button
+          onClick={() => setShowOrders(true)}
+          aria-label="Bestellingen"
+          className="md:hidden relative w-11 h-11 flex items-center justify-center text-accent shrink-0"
+        >
+          <Package className="w-5 h-5" />
+          {orderCount > 0 && (
+            <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center">
+              {orderCount}
+            </span>
           )}
-        </div>
+        </button>
+        <button
+          onClick={() => setShowMenu(true)}
+          aria-label="Meer"
+          className="md:hidden w-11 h-11 -mr-3 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
+      </div>
       </div>
 
+      {showMenu && (
+        <Sheet onClose={() => setShowMenu(false)}>
+          <div className="py-1">
+            {onOpenKnowledge && (
+              <button onClick={() => { setShowMenu(false); onOpenKnowledge() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+                <BookOpen className="w-5 h-5 text-text-tertiary" /> Kennisbank
+              </button>
+            )}
+            {onOpenContext && (
+              <button onClick={() => { setShowMenu(false); onOpenContext() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+                <FileText className="w-5 h-5 text-text-tertiary" /> Context
+              </button>
+            )}
+            {onOpenSettings && (
+              <button onClick={() => { setShowMenu(false); onOpenSettings() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+                <SettingsIcon className="w-5 h-5 text-text-tertiary" /> Instellingen
+              </button>
+            )}
+            {/* Conversation actions, set apart from navigation */}
+            <div className="h-px bg-border my-1 mx-5" />
+            <button onClick={() => { setShowMenu(false); openMerge() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <Merge className="w-5 h-5 text-text-tertiary" /> Samenvoegen met…
+            </button>
+            <button onClick={() => { setShowMenu(false); toggleArchive() }} className="w-full flex items-center gap-3 px-5 py-3.5 text-base text-text-primary active:bg-surface-2">
+              <Archive className="w-5 h-5 text-text-tertiary" /> {conversation?.is_archived ? 'Terughalen uit archief' : 'Archiveren'}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-1">
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 md:px-6 py-4 space-y-1">
         {messages.length === 0 && (
           <div className="text-center text-text-tertiary text-sm py-8">Geen berichten</div>
         )}
@@ -498,7 +523,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 </div>
               )}
               <div className={`flex ${isInbound ? 'justify-start' : 'justify-end'} mb-1`}>
-                <div className={`max-w-[70%] min-w-[80px] ${isInbound ? 'bubble-inbound' : 'bubble-outbound'} px-3 py-2 rounded-lg`}>
+                <div className={`max-w-[85%] md:max-w-[70%] min-w-[80px] ${isInbound ? 'bubble-inbound' : 'bubble-outbound'} px-3 py-2 rounded-lg`}>
                   {/* Outbound: show Dutch toggle (internal note for CS) */}
                   {outboundHasDutch && (
                     <div className="mb-1">
@@ -586,7 +611,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                                     href={src}
                                     download={filename}
                                     onClick={e => e.stopPropagation()}
-                                    className="absolute top-1.5 right-1.5 p-1.5 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                                    className="touch-visible absolute top-1.5 right-1.5 p-2 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
                                     title="Download"
                                   >
                                     <Download className="w-3.5 h-3.5" />
@@ -799,7 +824,8 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   )}
                   <button
                     onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-danger rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Bijlage verwijderen"
+                    className="touch-visible absolute -top-2 -right-2 w-7 h-7 md:w-5 md:h-5 bg-danger rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -807,11 +833,11 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
               ))}
             </div>
           )}
-          <div className="px-4 py-3 flex items-end gap-2">
+          <div className="px-3 md:px-4 py-3 flex items-end gap-1.5 md:gap-2">
             <select
               value={sendChannel}
               onChange={e => { const ch = e.target.value as 'whatsapp' | 'email'; setSendChannel(ch); onChannelChange?.(ch) }}
-              className="bg-surface-2 text-text-primary text-xs px-2 py-2 rounded-lg border border-border focus:border-accent outline-none shrink-0"
+              className="h-10 max-w-[92px] md:max-w-none bg-surface-2 text-text-primary text-xs px-1.5 md:px-2 rounded-lg border border-border focus:border-accent outline-none shrink-0"
             >
               {conversation?.customer_phone && <option value="whatsapp">WhatsApp</option>}
               {conversation?.customer_email && <option value="email">Email</option>}
@@ -826,7 +852,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+              className="w-10 h-10 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors shrink-0"
               title="Foto of video toevoegen"
             >
               <ImageIcon className="w-5 h-5" />
@@ -843,7 +869,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                   .filter((f): f is File => f !== null)
                 if (files.length) { addFiles(files); e.preventDefault() }
               }}
-              placeholder={dragging ? 'Sleep hier je foto naartoe...' : 'Typ een bericht...'}
+              placeholder={dragging ? 'Sleep hier je foto naartoe...' : 'Bericht…'}
               rows={1}
               className="flex-1 bg-surface-2 text-text-primary text-sm px-3 py-2 rounded-lg outline-none border border-border focus:border-accent placeholder:text-text-tertiary resize-none max-h-32"
               style={{ height: 'auto' }}
@@ -853,10 +879,20 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 t.style.height = `${Math.min(t.scrollHeight, 128)}px`
               }}
             />
+            {onOpenAI && (
+              <button
+                onClick={onOpenAI}
+                aria-label="AI-assistent"
+                className="md:hidden w-10 h-10 flex items-center justify-center rounded-full bg-accent-subtle text-accent shrink-0"
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
+            )}
             <button
               onClick={sendManual}
               disabled={sending || (!manualText.trim() && !attachedFiles.length)}
-              className="p-2.5 bg-accent disabled:opacity-40 text-white rounded-full hover:bg-accent-hover transition-colors shrink-0"
+              aria-label="Versturen"
+              className="w-10 h-10 flex items-center justify-center bg-accent disabled:opacity-40 text-white rounded-full hover:bg-accent-hover transition-colors shrink-0"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -864,14 +900,16 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
         </div>
       )}
 
+      {/* Keep the composer clear of the iPhone home indicator */}
+      <div className="safe-bottom bg-surface-1 shrink-0 md:hidden" />
+
       {/* Merge modal */}
       {showMerge && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-surface-1 border border-border rounded-2xl w-[400px] max-h-[60vh] flex flex-col shadow-lg">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <Sheet onClose={() => setShowMerge(false)} desktopWidth="md:w-[400px]" tall>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
               <h3 className="text-text-primary font-semibold text-sm">Samenvoegen met...</h3>
-              <button onClick={() => setShowMerge(false)} className="text-text-tertiary hover:text-text-primary">
-                <span className="text-lg">&times;</span>
+              <button onClick={() => setShowMerge(false)} aria-label="Sluiten" className="w-11 h-11 -mr-3 flex items-center justify-center text-text-tertiary hover:text-text-primary">
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="px-4 py-2 border-b border-border">
@@ -918,14 +956,14 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                       <div className="flex gap-2">
                         <button
                           onClick={() => setMergeConfirmId(null)}
-                          className="text-xs text-text-tertiary hover:text-text-primary px-2 py-1"
+                          className="text-sm text-text-tertiary hover:text-text-primary px-3 py-2"
                         >
                           Annuleren
                         </button>
                         <button
                           onClick={() => doMerge(c.id)}
                           disabled={merging}
-                          className="text-xs bg-accent text-white px-3 py-1 rounded hover:bg-accent-hover disabled:opacity-50"
+                          className="text-sm bg-danger text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                         >
                           {merging ? 'Bezig...' : 'Bevestigen'}
                         </button>
@@ -935,8 +973,7 @@ export default function ChatWindow({ conversationId, onConversationLoad, onMessa
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </Sheet>
       )}
 
       {/* Orders modal */}

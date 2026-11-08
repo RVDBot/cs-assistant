@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Sparkles } from 'lucide-react'
+import { useState, useCallback, useRef } from 'react'
 import ConversationList from '@/components/ConversationList'
 import ChatWindow from '@/components/ChatWindow'
 import AIPanel from '@/components/AIPanel'
@@ -51,13 +50,32 @@ export default function Home() {
     setMobileView('chat')
   }
 
+  // Undo for archiving: a toast for a few seconds after a conversation is archived
+  const [archivedId, setArchivedId] = useState<number | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showArchiveUndo = useCallback((id: number) => {
+    setArchivedId(id)
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    undoTimer.current = setTimeout(() => setArchivedId(null), 6000)
+  }, [])
+  async function undoArchive() {
+    if (archivedId === null) return
+    await fetch(`/api/conversations/${archivedId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_archived: false }),
+    })
+    setArchivedId(null)
+    handleMessageSent()
+  }
+
   function handleBack() {
     setMobileView('list')
     setShowMobileAI(false)
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-0">
+    <div className="flex h-dvh overflow-hidden bg-surface-0">
 
       {/* Conversation list — full screen on mobile when mobileView==='list', fixed width on desktop */}
       <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col h-full w-full md:w-auto overflow-hidden`}>
@@ -82,55 +100,39 @@ export default function Home() {
           onOpenSettings={() => setShowSettings(true)}
           onOpenContext={() => setShowContext(true)}
           onOpenKnowledge={() => setShowKnowledge(true)}
+          onArchived={showArchiveUndo}
+          onOpenAI={() => setShowMobileAI(true)}
         />
       </div>
 
-      {/* AI panel — hidden on mobile (shown via floating button), visible on desktop */}
-      <div className="hidden md:flex md:min-h-0 md:overflow-hidden">
-        <AIPanel
-          conversation={conversation}
-          onMessageSent={handleMessageSent}
-          sendChannel={sendChannel}
-          onLanguageChange={handleLanguageChange}
-        />
-      </div>
-
-      {/* Mobile: floating AI button */}
-      {mobileView === 'chat' && selectedConvId && (
-        <button
-          onClick={() => setShowMobileAI(true)}
-          className="md:hidden fixed bottom-24 right-4 z-40 w-14 h-14 bg-accent rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+      {/* AI panel: a column on desktop; on mobile the same instance opens as a bottom
+          sheet, so a drafted answer survives closing and reopening the sheet */}
+      <div
+        className={showMobileAI
+          ? 'fixed inset-0 z-50 flex flex-col justify-end bg-black/50 md:static md:z-auto md:bg-transparent md:min-h-0 md:overflow-hidden'
+          : 'hidden md:flex md:min-h-0 md:overflow-hidden'}
+        onClick={e => { if (showMobileAI && e.target === e.currentTarget) setShowMobileAI(false) }}
+      >
+        <div className={showMobileAI
+          ? 'sheet-panel bg-surface-1 rounded-t-2xl max-h-[92dvh] flex flex-col overflow-hidden safe-bottom md:contents'
+          : 'contents'}
         >
-          <Sparkles className="w-6 h-6 text-white" />
-        </button>
-      )}
-
-      {/* Mobile: AI panel bottom sheet */}
-      {showMobileAI && (
-        <div
-          className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/50"
-          onClick={() => setShowMobileAI(false)}
-        >
-          <div
-            className="bg-surface-1 rounded-t-2xl max-h-[90vh] flex flex-col overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-2 pb-1 shrink-0">
+          {showMobileAI && (
+            <div className="md:hidden flex justify-center pt-2 pb-1 shrink-0">
               <div className="w-10 h-1 bg-border rounded-full" />
             </div>
-            <div className="flex-1 overflow-y-auto flex flex-col">
-              <AIPanel
-                conversation={conversation}
-                onMessageSent={() => { handleMessageSent(); setShowMobileAI(false) }}
-                onClose={() => setShowMobileAI(false)}
-                sendChannel={sendChannel}
-                onLanguageChange={handleLanguageChange}
-              />
-            </div>
+          )}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col md:contents">
+            <AIPanel
+              conversation={conversation}
+              onMessageSent={() => { handleMessageSent(); setShowMobileAI(false) }}
+              onClose={() => setShowMobileAI(false)}
+              sendChannel={sendChannel}
+              onLanguageChange={handleLanguageChange}
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {/* Modals */}
       {showSettings && (
@@ -142,6 +144,15 @@ export default function Home() {
       {showContext && <ContextManager onClose={() => setShowContext(false)} />}
       {showKnowledge && <KnowledgeBase onClose={() => setShowKnowledge(false)} />}
       {showLogs && <Logs onClose={() => setShowLogs(false)} />}
+
+      {archivedId !== null && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-[70] flex items-center gap-4 bg-text-primary text-white text-sm pl-4 pr-2 py-2 rounded-xl shadow-lg fade-in">
+          <span>Gesprek gearchiveerd</span>
+          <button onClick={undoArchive} className="font-semibold text-white underline underline-offset-2 px-2 py-1.5">
+            Ongedaan maken
+          </button>
+        </div>
+      )}
     </div>
   )
 }

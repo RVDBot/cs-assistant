@@ -6,6 +6,7 @@ import { selectNewUids, mailDateToDb } from './email-cutoff'
 import { resolveCustomer, planFormSplit } from './email-sender'
 import { stripQuotedHtml, stripQuotedText, htmlToPlainText } from './email-quote'
 import { buildEmailBodies } from './email-signature'
+import { shouldDetectLanguage } from './language'
 import path from 'path'
 import fs from 'fs'
 
@@ -653,13 +654,18 @@ async function processIncomingEmail(
     }
   }
 
-  // Detect language and translate
-  let language = 'en'
+  // Detect language and translate. Short replies ("Thanks") keep the conversation's
+  // language, and a language set by hand is never overwritten.
+  const convLang = db.prepare('SELECT detected_language, language_manual FROM conversations WHERE id = ?').get(convId) as { detected_language: string | null; language_manual: number }
+  const priorInbound = db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND direction = 'inbound'`).get(convId) as { n: number }
+  let language = convLang.detected_language || 'en'
   let dutchContent = body
   try {
-    language = await detectLanguage(body, convId)
+    if (shouldDetectLanguage({ current: convLang.detected_language, manual: !!convLang.language_manual, known: priorInbound.n > 0, text: body })) {
+      language = await detectLanguage(body, convId)
+      db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, convId)
+    }
     dutchContent = await translateToDutch(body, language, convId)
-    db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, convId)
   } catch (e) {
     log('error', 'ai', 'Vertaling email mislukt', { error: e instanceof Error ? e.message : String(e), from: customerAddr }, convId)
   }

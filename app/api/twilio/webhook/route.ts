@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { shouldDetectLanguage } from '@/lib/language'
 import { getDb } from '@/lib/db'
 import { detectLanguage, translateToDutch } from '@/lib/claude'
 import { log } from '@/lib/logger'
@@ -111,13 +112,17 @@ export async function POST(req: NextRequest) {
   // Only translate if there's actual text (not just media labels)
   if (messageBody) {
     try {
-      // Skip language detection for short messages (< 4 words) when language is already set,
-      // or when language was manually overridden
-      const wordCount = messageBody.trim().split(/\s+/).length
-      const hasExistingLang = !!conv.detected_language && conv.detected_language !== 'en'
-      const skipDetection = conv.language_manual || (hasExistingLang && wordCount < 4)
+      // Keep the conversation's language for short replies ("Thanks") and when it was set
+      // by hand; the first message from this customer is always detected
+      const priorInbound = db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND direction = 'inbound'`).get(conv.id) as { n: number }
+      const detect = shouldDetectLanguage({
+        current: conv.detected_language,
+        manual: !!conv.language_manual,
+        known: priorInbound.n > 0,
+        text: messageBody,
+      })
 
-      if (!skipDetection) {
+      if (detect) {
         language = await detectLanguage(messageBody, conv.id)
         if (language !== conv.detected_language) {
           db.prepare('UPDATE conversations SET detected_language = ? WHERE id = ?').run(language, conv.id)
